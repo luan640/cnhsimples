@@ -3,10 +3,46 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { getInstructorProfile } from '@/lib/instructors/dashboard'
 import {
+  attachPreApprovalToSubscription,
   createInstructorSubscription,
   getInstructorMembershipAmount,
 } from '@/lib/instructors/subscriptions'
 import { getMercadoPagoPreApprovalClient } from '@/lib/mercadopago/client'
+
+function getErrorMessage(error: unknown) {
+  if (error instanceof Error && error.message.trim()) {
+    return error.message
+  }
+
+  if (typeof error === 'object' && error) {
+    const maybeMessage = Reflect.get(error, 'message')
+
+    if (typeof maybeMessage === 'string' && maybeMessage.trim()) {
+      return maybeMessage
+    }
+
+    const cause = Reflect.get(error, 'cause')
+    if (cause instanceof Error && cause.message.trim()) {
+      return cause.message
+    }
+
+    const response = Reflect.get(error, 'response')
+    if (typeof response === 'object' && response) {
+      const responseMessage = Reflect.get(response, 'message')
+      if (typeof responseMessage === 'string' && responseMessage.trim()) {
+        return responseMessage
+      }
+    }
+
+    try {
+      return JSON.stringify(error)
+    } catch {
+      return 'Falha ao iniciar pagamento da mensalidade.'
+    }
+  }
+
+  return 'Falha ao iniciar pagamento da mensalidade.'
+}
 
 export async function POST() {
   const supabase = await createClient()
@@ -35,13 +71,13 @@ export async function POST() {
 
   const appUrl = process.env.NEXT_PUBLIC_APP_URL
 
-  if (!appUrl) {
+  if (!appUrl?.trim()) {
     return NextResponse.json({ error: 'NEXT_PUBLIC_APP_URL nao configurado.' }, { status: 500 })
   }
 
   const preApprovalPlanId = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID
 
-  if (!preApprovalPlanId) {
+  if (!preApprovalPlanId?.trim()) {
     return NextResponse.json({ error: 'MERCADO_PAGO_PREAPPROVAL_PLAN_ID nao configurado.' }, { status: 500 })
   }
 
@@ -75,6 +111,18 @@ export async function POST() {
       )
     }
 
+    if (!preApproval.id) {
+      return NextResponse.json(
+        { error: 'Mercado Pago nao retornou o identificador da assinatura.' },
+        { status: 502 }
+      )
+    }
+
+    await attachPreApprovalToSubscription(subscription.id, {
+      preApprovalId: preApproval.id,
+      paymentUrl: checkoutUrl,
+    })
+
     return NextResponse.json({
       ok: true,
       checkoutUrl,
@@ -84,7 +132,7 @@ export async function POST() {
     console.error('[mercadopago] create instructor membership preference failed:', error)
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : 'Falha ao iniciar pagamento da mensalidade.',
+        error: getErrorMessage(error),
       },
       { status: 500 }
     )
