@@ -6,6 +6,7 @@ import {
   attachPreApprovalToSubscription,
   createInstructorSubscription,
   getInstructorMembershipAmount,
+  getInstructorMembershipPreapprovalPlanId,
 } from '@/lib/instructors/subscriptions'
 import { getMercadoPagoPreApprovalClient } from '@/lib/mercadopago/client'
 
@@ -78,6 +79,7 @@ export async function POST() {
   try {
     const amount = getInstructorMembershipAmount()
     const subscription = await createInstructorSubscription(profile.id, amount)
+    const preapprovalPlanId = getInstructorMembershipPreapprovalPlanId()
 
     if (!subscription) {
       return NextResponse.json(
@@ -92,12 +94,18 @@ export async function POST() {
         reason: 'Mensalidade do instrutor',
         payer_email: user.email,
         external_reference: subscription.external_reference,
-        auto_recurring: {
-          frequency: 1,
-          frequency_type: 'months',
-          transaction_amount: amount,
-          currency_id: 'BRL',
-        },
+        ...(preapprovalPlanId
+          ? {
+              preapproval_plan_id: preapprovalPlanId,
+            }
+          : {
+              auto_recurring: {
+                frequency: 1,
+                frequency_type: 'months',
+                transaction_amount: amount,
+                currency_id: 'BRL',
+              },
+            }),
         back_url: `${appUrl}/api/payments/instructor-membership/return`,
         status: 'pending',
       },

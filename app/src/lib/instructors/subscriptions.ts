@@ -29,6 +29,7 @@ export type InstructorSubscription = {
 }
 
 const DEFAULT_MEMBERSHIP_AMOUNT = Number(process.env.MERCADO_PAGO_MEMBERSHIP_AMOUNT ?? '1')
+const MEMBERSHIP_PREAPPROVAL_PLAN_ID = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID?.trim() || null
 const MEMBERSHIP_DURATION_DAYS = Number(process.env.INSTRUCTOR_MEMBERSHIP_DURATION_DAYS ?? '30')
 
 function toNumber(value: number | string | null | undefined, fallback = 0) {
@@ -100,6 +101,10 @@ async function mergeUserMetadata(userId: string, patch: Record<string, unknown>)
 
 export function getInstructorMembershipAmount() {
   return DEFAULT_MEMBERSHIP_AMOUNT
+}
+
+export function getInstructorMembershipPreapprovalPlanId() {
+  return MEMBERSHIP_PREAPPROVAL_PLAN_ID
 }
 
 export async function getLatestInstructorSubscription(instructorId: string) {
