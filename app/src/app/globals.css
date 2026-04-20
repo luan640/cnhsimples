@@ -1,0 +1,216 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background:              var(--background);
+  --color-foreground:              var(--foreground);
+  --font-sans:                     var(--font-sans);
+  --font-mono:                     var(--font-geist-mono);
+  --font-heading:                  var(--font-sans);
+
+  /* shadcn tokens */
+  --color-sidebar-ring:            var(--sidebar-ring);
+  --color-sidebar-border:          var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent:          var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary:         var(--sidebar-primary);
+  --color-sidebar-foreground:      var(--sidebar-foreground);
+  --color-sidebar:                 var(--sidebar);
+  --color-chart-5:                 var(--chart-5);
+  --color-chart-4:                 var(--chart-4);
+  --color-chart-3:                 var(--chart-3);
+  --color-chart-2:                 var(--chart-2);
+  --color-chart-1:                 var(--chart-1);
+  --color-ring:                    var(--ring);
+  --color-input:                   var(--input);
+  --color-border:                  var(--border);
+  --color-destructive:             var(--destructive);
+  --color-accent-foreground:       var(--accent-foreground);
+  --color-accent:                  var(--accent);
+  --color-muted-foreground:        var(--muted-foreground);
+  --color-muted:                   var(--muted);
+  --color-secondary-foreground:    var(--secondary-foreground);
+  --color-secondary:               var(--secondary);
+  --color-primary-foreground:      var(--primary-foreground);
+  --color-primary:                 var(--primary);
+  --color-popover-foreground:      var(--popover-foreground);
+  --color-popover:                 var(--popover);
+  --color-card-foreground:         var(--card-foreground);
+  --color-card:                    var(--card);
+  --radius-sm:                     calc(var(--radius) * 0.6);
+  --radius-md:                     calc(var(--radius) * 0.8);
+  --radius-lg:                     var(--radius);
+  --radius-xl:                     calc(var(--radius) * 1.4);
+
+  /* ── CNH Simples custom tokens ── */
+  --color-brand:                   var(--brand);
+  --color-brand-dark:              var(--brand-dark);
+  --color-brand-light:             var(--brand-light);
+  --color-cta:                     var(--cta);
+  --color-cta-dark:                var(--cta-dark);
+  --color-content-primary:         var(--content-primary);
+  --color-content-primary-light:   var(--content-primary-light);
+  --color-surface-muted:           var(--surface-muted);
+  --color-warning:                 var(--warning);
+  --color-warning-light:           var(--warning-light);
+}
+
+:root {
+  /* ── shadcn base (light) ── */
+  --background:              oklch(0.98 0.003 247);   /* #F8FAFC slate-50 */
+  --foreground:              oklch(0.13 0.025 264);   /* #0F172A slate-900 */
+  --card:                    oklch(1 0 0);
+  --card-foreground:         oklch(0.13 0.025 264);
+  --popover:                 oklch(1 0 0);
+  --popover-foreground:      oklch(0.13 0.025 264);
+  --primary:                 oklch(0.54 0.18 253);    /* #3ECF8E verde Supabase */
+  --primary-foreground:      oklch(0.13 0.025 264);   /* texto escuro sobre verde */
+  --secondary:               oklch(0.96 0.004 247);
+  --secondary-foreground:    oklch(0.13 0.025 264);
+  --muted:                   oklch(0.96 0.004 247);   /* #F1F5F9 slate-100 */
+  --muted-foreground:        oklch(0.52 0.02 252);    /* #64748B slate-500 */
+  --accent:                  oklch(0.96 0.004 247);
+  --accent-foreground:       oklch(0.13 0.025 264);
+  --destructive:             oklch(0.577 0.245 27.325); /* #DC2626 red-600 */
+  --border:                  oklch(0.9 0.008 252);    /* #E2E8F0 slate-200 */
+  --input:                   oklch(0.9 0.008 252);
+  --ring:                    oklch(0.54 0.18 253);    /* verde Supabase */
+  --radius:                  0.5rem;                  /* 8px base */
+
+  /* ── Sidebar estilo Supabase dark ── */
+  --sidebar:                 oklch(0.14 0 0);         /* #1c1c1c */
+  --sidebar-foreground:      oklch(0.72 0.005 264);   /* #a1a1aa */
+  --sidebar-primary:         oklch(0.75 0.17 161);    /* #3ECF8E brand */
+  --sidebar-primary-foreground: oklch(0.13 0.025 264);
+  --sidebar-accent:          oklch(0.17 0 0);         /* #242424 hover */
+  --sidebar-accent-foreground: oklch(0.96 0.002 247); /* #f4f4f5 active text */
+  --sidebar-border:          oklch(0.24 0 0);         /* #333333 */
+  --sidebar-ring:            oklch(0.75 0.17 161);
+
+  /* ── Charts (paleta acessível) ── */
+  --chart-1:                 oklch(0.54 0.18 253);    /* brand verde */
+  --chart-2:                 oklch(0.61 0.18 238);    /* azul primary */
+  --chart-3:                 oklch(0.73 0.19 67);     /* laranja CTA */
+  --chart-4:                 oklch(0.71 0.14 50);     /* warning âmbar */
+  --chart-5:                 oklch(0.577 0.245 27);   /* erro vermelho */
+
+  /* ── CNH Simples custom ── */
+  --brand:                   #3ECF8E;
+  --brand-dark:              #2BBF7E;
+  --brand-light:             #D1FAE5;
+  --cta:                     #F97316;
+  --cta-dark:                #EA6C0A;
+  --content-primary:         #0284C7;
+  --content-primary-light:   #E0F2FE;
+  --surface-muted:           #F1F5F9;
+  --warning:                 #F59E0B;
+  --warning-light:           #FEF3C7;
+
+  /* ── Slots de agenda ── */
+  --slot-available-bg:       #D1FAE5;
+  --slot-available-text:     #065F46;
+  --slot-booked-bg:          #E0F2FE;
+  --slot-booked-text:        #0369A1;
+  --slot-done-bg:            #F1F5F9;
+  --slot-done-text:          #64748B;
+  --slot-blocked-bg:         #FEE2E2;
+  --slot-blocked-text:       #DC2626;
+
+  /* ── Sombras ── */
+  --shadow-card:             0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow-raised:           0 4px 12px rgba(0,0,0,0.10);
+  --shadow-modal:            0 20px 40px rgba(0,0,0,0.15);
+}
+
+/* dark mode padrão shadcn — não usado na plataforma (sidebar é sempre dark) */
+.dark {
+  --background:              oklch(0.14 0 0);
+  --foreground:              oklch(0.96 0.002 247);
+  --card:                    oklch(0.17 0 0);
+  --card-foreground:         oklch(0.96 0.002 247);
+  --popover:                 oklch(0.17 0 0);
+  --popover-foreground:      oklch(0.96 0.002 247);
+  --primary:                 oklch(0.75 0.17 161);
+  --primary-foreground:      oklch(0.13 0.025 264);
+  --secondary:               oklch(0.2 0 0);
+  --secondary-foreground:    oklch(0.96 0.002 247);
+  --muted:                   oklch(0.2 0 0);
+  --muted-foreground:        oklch(0.62 0.005 264);
+  --accent:                  oklch(0.2 0 0);
+  --accent-foreground:       oklch(0.96 0.002 247);
+  --destructive:             oklch(0.704 0.191 22.216);
+  --border:                  oklch(1 0 0 / 10%);
+  --input:                   oklch(1 0 0 / 15%);
+  --ring:                    oklch(0.75 0.17 161);
+  --sidebar:                 oklch(0.14 0 0);
+  --sidebar-foreground:      oklch(0.96 0.002 247);
+  --sidebar-primary:         oklch(0.75 0.17 161);
+  --sidebar-primary-foreground: oklch(0.13 0.025 264);
+  --sidebar-accent:          oklch(0.17 0 0);
+  --sidebar-accent-foreground: oklch(0.96 0.002 247);
+  --sidebar-border:          oklch(0.24 0 0);
+  --sidebar-ring:            oklch(0.75 0.17 161);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+    box-sizing: border-box;
+  }
+
+  html {
+    font-size: 16px;
+    -webkit-text-size-adjust: 100%;
+    @apply font-sans;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', sans-serif;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Foco acessível */
+  :focus-visible {
+    outline: 2px solid var(--brand);
+    outline-offset: 2px;
+  }
+
+  /* Scrollbar estilo Supabase */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #64748B; }
+}
+
+/* ─── REDUCED MOTION ─── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── UTILITÁRIOS CUSTOMIZADOS ─── */
+@layer utilities {
+  /* Slots da agenda */
+  .slot-available  { background: var(--slot-available-bg);  color: var(--slot-available-text); }
+  .slot-booked     { background: var(--slot-booked-bg);     color: var(--slot-booked-text); }
+  .slot-done       { background: var(--slot-done-bg);       color: var(--slot-done-text); }
+  .slot-blocked    { background: var(--slot-blocked-bg);    color: var(--slot-blocked-text); }
+
+  /* Sombras */
+  .shadow-card   { box-shadow: var(--shadow-card); }
+  .shadow-raised { box-shadow: var(--shadow-raised); }
+  .shadow-modal  { box-shadow: var(--shadow-modal); }
+
+  /* Truncate lines */
+  .line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .line-clamp-3 { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+}

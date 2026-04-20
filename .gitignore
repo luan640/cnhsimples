@@ -1,0 +1,98 @@
+# OS / editor noise
+.DS_Store
+Thumbs.db
+Desktop.ini
+ehthumbs.db
+*.swp
+*.swo
+*~
+
+# IDE / local tool state
+.idea/
+.vscode/*
+!.vscode/.gitignore
+!.vscode/extensions.json
+!.vscode/settings.json
+.claude.json
+.claude/
+.claude/settings.local.json
+
+# Logs and diagnostics
+*.log
+*.out
+*.err
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.pnpm-debug.log*
+lerna-debug.log*
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+!.env.*.example
+!.env.sample
+!.env.*.sample
+
+# Dependencies
+node_modules/
+**/node_modules/
+.pnp
+.pnp.*
+
+# Package manager caches
+.npm/
+.pnpm-store/
+.yarn/*
+!.yarn/patches/
+!.yarn/plugins/
+!.yarn/releases/
+!.yarn/versions/
+
+# Build output / caches
+.next/
+**/.next/
+out/
+**/out/
+build/
+**/build/
+dist/
+**/dist/
+coverage/
+**/coverage/
+.turbo/
+turbo/
+.cache/
+tmp/
+temp/
+
+# TypeScript / framework generated files
+*.tsbuildinfo
+next-env.d.ts
+
+# Vercel / deployment metadata
+.vercel/
+
+# Testing / browser automation artifacts
+playwright-report/
+test-results/
+blob-report/
+
+# Database / local services
+.supabase/
+supabase/.temp/
+**/supabase/.temp/
+*.sqlite
+*.sqlite3
+*.db
+
+# Certificates / local credentials
+*.pem
+*.key
+*.crt
+
+# Nested repositories or vendored VCS metadata
+app/.git/
+app/.git-local-backup/

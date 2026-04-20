@@ -1,0 +1,91 @@
+export const dynamic = 'force-dynamic'
+
+import { redirect } from 'next/navigation'
+
+import { AwaitingScreen } from '@/components/painel/AwaitingScreen'
+import { DashboardHome } from '@/components/painel/DashboardHome'
+import {
+  getDashboardStats,
+  getInstructorProfile,
+  resolveInstructorStatus,
+} from '@/lib/instructors/dashboard'
+import { getLatestInstructorSubscription } from '@/lib/instructors/subscriptions'
+import { createClient } from '@/lib/supabase/server'
+
+type SearchParams = Promise<Record<string, string | string[] | undefined>>
+
+function getSingleParam(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value
+}
+
+export default async function PainelPage({ searchParams }: { searchParams: SearchParams }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  const params = await searchParams
+
+  if (!user) {
+    redirect('/login')
+  }
+
+  const meta = user.user_metadata ?? {}
+  const metaStatus: string = meta.status ?? 'pending'
+  const metaRole: string = meta.role ?? ''
+
+  if (metaRole && metaRole !== 'instructor') {
+    redirect('/buscar')
+  }
+
+  const profile = await getInstructorProfile(user.id)
+  const status = resolveInstructorStatus(profile?.status, metaStatus)
+  const instructorName = profile?.full_name ?? (meta.full_name as string | undefined) ?? 'Instrutor'
+  const rejectionReason = profile?.rejection_reason ?? (meta.rejection_reason as string | undefined) ?? null
+  const membership = profile ? await getLatestInstructorSubscription(profile.id) : null
+  const membershipFlash = getSingleParam(params.mensalidade) ?? null
+
+  if (status === 'pending' || status === 'docs_rejected' || status === 'docs_approved') {
+    return (
+      <AwaitingScreen
+        status={status as 'pending' | 'docs_rejected' | 'docs_approved'}
+        instructorName={instructorName}
+        rejectionReason={rejectionReason}
+        membership={membership}
+        membershipFlash={membershipFlash}
+      />
+    )
+  }
+
+  if (status === 'inactive' || status === 'suspended') {
+    return (
+      <AwaitingScreen
+        status="pending"
+        instructorName={instructorName}
+        rejectionReason={
+          status === 'suspended'
+            ? 'Sua conta esta suspensa. Entre em contato com o suporte.'
+            : 'Sua conta esta inativa. Entre em contato com o suporte para reativa-la.'
+        }
+      />
+    )
+  }
+
+  if (!profile) {
+    return (
+      <AwaitingScreen
+        status="pending"
+        instructorName={instructorName}
+        rejectionReason={null}
+      />
+    )
+  }
+
+  const stats = await getDashboardStats(profile.id)
+
+  return (
+    <DashboardHome
+      profile={profile}
+      stats={stats}
+      membership={membership}
+      membershipFlash={membershipFlash}
+    />
+  )
+}
