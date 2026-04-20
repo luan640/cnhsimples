@@ -2,7 +2,10 @@ import Link from 'next/link'
 import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock, FileText, Mail } from 'lucide-react'
 
 import { MembershipPaymentButton } from '@/components/painel/MembershipPaymentButton'
-import { getInstructorMembershipAmount, type InstructorSubscription } from '@/lib/instructors/subscriptions'
+import {
+  getInstructorMembershipAmount,
+  type InstructorSubscription,
+} from '@/lib/instructors/subscription-shared'
 import type { InstructorStatus } from '@/types'
 
 interface Props {

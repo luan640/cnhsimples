@@ -15,6 +15,10 @@ import {
   Wallet,
 } from 'lucide-react'
 import {
+  getInstructorMembershipAmount,
+  type InstructorSubscription,
+} from '@/lib/instructors/subscription-shared'
+import {
   Bar,
   BarChart,
   CartesianGrid,
@@ -28,7 +32,6 @@ import {
 
 import { MembershipPaymentButton } from '@/components/painel/MembershipPaymentButton'
 import type { DashboardStats, InstructorProfile } from '@/lib/instructors/dashboard'
-import { getInstructorMembershipAmount, type InstructorSubscription } from '@/lib/instructors/subscriptions'
 
 interface Props {
   profile: InstructorProfile

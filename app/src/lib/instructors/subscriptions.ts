@@ -2,33 +2,16 @@ import crypto from 'node:crypto'
 
 import { revalidatePath } from 'next/cache'
 
+import {
+  getInstructorMembershipAmount,
+  type InstructorSubscription,
+  type InstructorSubscriptionStatus,
+} from '@/lib/instructors/subscription-shared'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getMercadoPagoPaymentClient, getMercadoPagoPreApprovalClient } from '@/lib/mercadopago/client'
 import { sendInstructorActivatedEmail } from '@/lib/email/notifications'
 
-export type InstructorSubscriptionStatus =
-  | 'pending'
-  | 'approved'
-  | 'rejected'
-  | 'cancelled'
-  | 'expired'
-
-export type InstructorSubscription = {
-  id: string
-  instructor_id: string
-  plan: string
-  value: number
-  status: InstructorSubscriptionStatus
-  external_reference: string
-  mp_preference_id: string | null
-  mp_payment_id: string | null
-  payment_url: string | null
-  paid_at: string | null
-  expires_at: string | null
-  created_at: string
-}
-
-const DEFAULT_MEMBERSHIP_AMOUNT = Number(process.env.MERCADO_PAGO_MEMBERSHIP_AMOUNT ?? '1')
+export { getInstructorMembershipAmount }
 const MEMBERSHIP_PREAPPROVAL_PLAN_ID = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID?.trim() || null
 const MEMBERSHIP_DURATION_DAYS = Number(process.env.INSTRUCTOR_MEMBERSHIP_DURATION_DAYS ?? '30')
 
@@ -99,10 +82,6 @@ async function mergeUserMetadata(userId: string, patch: Record<string, unknown>)
   })
 }
 
-export function getInstructorMembershipAmount() {
-  return DEFAULT_MEMBERSHIP_AMOUNT
-}
-
 export function getInstructorMembershipPreapprovalPlanId() {
   return MEMBERSHIP_PREAPPROVAL_PLAN_ID
 }
@@ -148,7 +127,7 @@ export async function getLatestPendingInstructorSubscription(instructorId: strin
   return normalizeSubscription(data)
 }
 
-export async function createInstructorSubscription(instructorId: string, amount = DEFAULT_MEMBERSHIP_AMOUNT) {
+export async function createInstructorSubscription(instructorId: string, amount = getInstructorMembershipAmount()) {
   const admin = createAdminClient()
   const externalReference = `membership:${instructorId}:${crypto.randomUUID()}`
 
