@@ -60,10 +60,28 @@ export default async function PainelPage({ searchParams }: { searchParams: Searc
     }
   }
 
-  if (status === 'pending' || status === 'docs_rejected' || status === 'docs_approved') {
+  const hasApprovedMembership = membership?.status === 'approved'
+  const shouldShowOnboardingWizard =
+    !profile ||
+    status === 'pending' ||
+    status === 'docs_rejected' ||
+    (
+      status !== 'inactive' &&
+      status !== 'suspended' &&
+      !hasApprovedMembership
+    )
+
+  if (shouldShowOnboardingWizard) {
+    const awaitingStatus =
+      !profile || status === 'pending'
+        ? 'pending'
+        : status === 'docs_rejected'
+          ? 'docs_rejected'
+          : 'docs_approved'
+
     return (
       <AwaitingScreen
-        status={status as 'pending' | 'docs_rejected' | 'docs_approved'}
+        status={awaitingStatus}
         instructorName={instructorName}
         rejectionReason={rejectionReason}
         membership={membership}
