@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock, FileText, Mail } from 'lucide-react'
 
 import { MembershipPaymentButton } from '@/components/painel/MembershipPaymentButton'
-import type { InstructorSubscription } from '@/lib/instructors/subscriptions'
+import { getInstructorMembershipAmount, type InstructorSubscription } from '@/lib/instructors/subscriptions'
 import type { InstructorStatus } from '@/types'
 
 interface Props {
@@ -38,7 +38,7 @@ export function AwaitingScreen({
   const isRejected = status === 'docs_rejected'
   const needsPayment = status === 'docs_approved'
   const isPending = status === 'pending'
-  const membershipAmount = membership?.value ?? 1
+  const membershipAmount = getInstructorMembershipAmount()
   const firstName = instructorName.split(' ')[0]
 
   return (

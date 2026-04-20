@@ -28,7 +28,7 @@ import {
 
 import { MembershipPaymentButton } from '@/components/painel/MembershipPaymentButton'
 import type { DashboardStats, InstructorProfile } from '@/lib/instructors/dashboard'
-import type { InstructorSubscription } from '@/lib/instructors/subscriptions'
+import { getInstructorMembershipAmount, type InstructorSubscription } from '@/lib/instructors/subscriptions'
 
 interface Props {
   profile: InstructorProfile
@@ -129,7 +129,7 @@ export function DashboardHome({ profile, stats, membership, membershipFlash }: P
   const hora = new Date().getHours()
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite'
   const proximaAula = stats.proximasAulas[0]
-  const membershipAmount = membership?.value ?? 1
+  const membershipAmount = getInstructorMembershipAmount()
   const membershipStatus =
     membership?.status === 'approved' ? 'Ativa' : membership?.status === 'pending' ? 'Pendente' : 'Renovar'
   const membershipExpiresAt = membership?.expires_at
