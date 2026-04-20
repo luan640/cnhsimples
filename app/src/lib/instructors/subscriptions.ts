@@ -182,7 +182,7 @@ export async function attachPreferenceToSubscription(
 export async function attachPreApprovalToSubscription(
   subscriptionId: string,
   params: {
-    preApprovalId: string
+    preApprovalId?: string | null
     paymentUrl: string
   }
 ) {
@@ -190,7 +190,7 @@ export async function attachPreApprovalToSubscription(
   const { data, error } = await admin
     .from('instructor_subscriptions')
     .update({
-      mp_preference_id: params.preApprovalId,
+      mp_preference_id: params.preApprovalId ?? null,
       payment_url: params.paymentUrl,
     })
     .eq('id', subscriptionId)

@@ -8,7 +8,7 @@ import {
   getInstructorMembershipAmount,
   getInstructorMembershipPreapprovalPlanId,
 } from '@/lib/instructors/subscriptions'
-import { getMercadoPagoPreApprovalClient } from '@/lib/mercadopago/client'
+import { getMercadoPagoPreApprovalClient, getMercadoPagoPreApprovalPlanClient } from '@/lib/mercadopago/client'
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) {
@@ -88,47 +88,26 @@ export async function POST() {
       )
     }
 
-    const preApprovalClient = getMercadoPagoPreApprovalClient()
-    const preApproval = await preApprovalClient.create({
-      body: {
-        reason: 'Mensalidade do instrutor',
-        payer_email: user.email,
-        external_reference: subscription.external_reference,
-        ...(preapprovalPlanId
-          ? {
-              preapproval_plan_id: preapprovalPlanId,
-            }
-          : {
-              auto_recurring: {
-                frequency: 1,
-                frequency_type: 'months',
-                transaction_amount: amount,
-                currency_id: 'BRL',
-              },
-            }),
-        back_url: `${appUrl}/api/payments/instructor-membership/return`,
-        status: 'pending',
-      },
-    })
-
-    const checkoutUrl = preApproval.init_point
-
-    if (!checkoutUrl) {
+    if (!preapprovalPlanId) {
       return NextResponse.json(
-        { error: 'Mercado Pago nao retornou a URL do checkout.' },
-        { status: 502 }
+        { error: 'MERCADO_PAGO_PREAPPROVAL_PLAN_ID nao configurado.' },
+        { status: 500 }
       )
     }
 
-    if (!preApproval.id) {
+    const preApprovalPlanClient = getMercadoPagoPreApprovalPlanClient()
+    const plan = await preApprovalPlanClient.get({ preApprovalPlanId: preapprovalPlanId })
+    const checkoutUrl = plan.init_point
+
+    if (!checkoutUrl) {
       return NextResponse.json(
-        { error: 'Mercado Pago nao retornou o identificador da assinatura.' },
+        { error: 'Mercado Pago nao retornou a URL do checkout do plano.' },
         { status: 502 }
       )
     }
 
     await attachPreApprovalToSubscription(subscription.id, {
-      preApprovalId: preApproval.id,
+      preApprovalId: null,
       paymentUrl: checkoutUrl,
     })
 
