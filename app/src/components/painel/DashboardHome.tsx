@@ -129,7 +129,7 @@ export function DashboardHome({ profile, stats, membership, membershipFlash }: P
   const hora = new Date().getHours()
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite'
   const proximaAula = stats.proximasAulas[0]
-  const membershipAmount = membership?.value ?? 59.9
+  const membershipAmount = membership?.value ?? 1
   const membershipStatus =
     membership?.status === 'approved' ? 'Ativa' : membership?.status === 'pending' ? 'Pendente' : 'Renovar'
   const membershipExpiresAt = membership?.expires_at

@@ -28,7 +28,7 @@ export type InstructorSubscription = {
   created_at: string
 }
 
-const DEFAULT_MEMBERSHIP_AMOUNT = Number(process.env.MERCADO_PAGO_MEMBERSHIP_AMOUNT ?? '59.9')
+const DEFAULT_MEMBERSHIP_AMOUNT = Number(process.env.MERCADO_PAGO_MEMBERSHIP_AMOUNT ?? '1')
 const MEMBERSHIP_DURATION_DAYS = Number(process.env.INSTRUCTOR_MEMBERSHIP_DURATION_DAYS ?? '30')
 
 function toNumber(value: number | string | null | undefined, fallback = 0) {

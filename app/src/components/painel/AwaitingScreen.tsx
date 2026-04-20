@@ -38,7 +38,7 @@ export function AwaitingScreen({
   const isRejected = status === 'docs_rejected'
   const needsPayment = status === 'docs_approved'
   const isPending = status === 'pending'
-  const membershipAmount = membership?.value ?? 59.9
+  const membershipAmount = membership?.value ?? 1
   const firstName = instructorName.split(' ')[0]
 
   return (
