@@ -109,7 +109,7 @@ export default async function AdminSaquesPage({
                       <p className="text-xs mt-0.5" style={{ color: '#EF4444' }}>{w.admin_note}</p>
                     )}
                   </td>
-                  <WithdrawalRowActions withdrawal={w} index={i} />
+                  <WithdrawalRowActions withdrawal={w} />
                 </tr>
               ))}
             </tbody>
