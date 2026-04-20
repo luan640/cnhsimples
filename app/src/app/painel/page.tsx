@@ -9,7 +9,10 @@ import {
   getInstructorProfile,
   resolveInstructorStatus,
 } from '@/lib/instructors/dashboard'
-import { getLatestInstructorSubscription } from '@/lib/instructors/subscriptions'
+import {
+  getLatestInstructorSubscription,
+  syncLatestInstructorPlanSubscriptionByEmail,
+} from '@/lib/instructors/subscriptions'
 import { createClient } from '@/lib/supabase/server'
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -39,8 +42,23 @@ export default async function PainelPage({ searchParams }: { searchParams: Searc
   const status = resolveInstructorStatus(profile?.status, metaStatus)
   const instructorName = profile?.full_name ?? (meta.full_name as string | undefined) ?? 'Instrutor'
   const rejectionReason = profile?.rejection_reason ?? (meta.rejection_reason as string | undefined) ?? null
-  const membership = profile ? await getLatestInstructorSubscription(profile.id) : null
+  let membership = profile ? await getLatestInstructorSubscription(profile.id) : null
   const membershipFlash = getSingleParam(params.mensalidade) ?? null
+
+  if (
+    profile &&
+    user.email &&
+    membership?.status === 'pending'
+  ) {
+    try {
+      const syncedMembership = await syncLatestInstructorPlanSubscriptionByEmail(profile.id, user.email)
+      if (syncedMembership) {
+        membership = syncedMembership
+      }
+    } catch (error) {
+      console.error('[painel] failed to sync latest plan subscription:', error)
+    }
+  }
 
   if (status === 'pending' || status === 'docs_rejected' || status === 'docs_approved') {
     return (

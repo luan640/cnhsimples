@@ -86,6 +86,39 @@ export function getInstructorMembershipPreapprovalPlanId() {
   return MEMBERSHIP_PREAPPROVAL_PLAN_ID
 }
 
+export async function syncLatestInstructorPlanSubscriptionByEmail(
+  instructorId: string,
+  payerEmail: string | null | undefined
+) {
+  const preapprovalPlanId = getInstructorMembershipPreapprovalPlanId()
+
+  if (!preapprovalPlanId || !payerEmail?.trim()) {
+    return null
+  }
+
+  const preApprovalClient = getMercadoPagoPreApprovalClient()
+  const response = await preApprovalClient.search({
+    options: {
+      payer_email: payerEmail.trim(),
+      preapproval_plan_id: preapprovalPlanId,
+      sort: 'date_created_desc',
+    },
+  })
+
+  const approvedSubscription = response.results?.find(
+    (item) => item.id && item.status === 'authorized'
+  )
+
+  if (!approvedSubscription?.id) {
+    return null
+  }
+
+  return syncInstructorSubscriptionPreApprovalForInstructor(
+    instructorId,
+    String(approvedSubscription.id)
+  )
+}
+
 export async function getLatestInstructorSubscription(instructorId: string) {
   const admin = createAdminClient()
   const { data, error } = await admin
