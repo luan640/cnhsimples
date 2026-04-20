@@ -25,3 +25,28 @@ const DEFAULT_MEMBERSHIP_AMOUNT = Number(process.env.MERCADO_PAGO_MEMBERSHIP_AMO
 export function getInstructorMembershipAmount() {
   return DEFAULT_MEMBERSHIP_AMOUNT
 }
+
+export function isInstructorSubscriptionActiveForAccess(
+  subscription:
+    | Pick<InstructorSubscription, 'status' | 'expires_at'>
+    | null
+    | undefined,
+  referenceDate = new Date()
+) {
+  if (!subscription) {
+    return false
+  }
+
+  const now = referenceDate.getTime()
+  const expiresAt = subscription.expires_at ? new Date(subscription.expires_at).getTime() : null
+
+  if (subscription.status === 'approved') {
+    return !expiresAt || expiresAt > now
+  }
+
+  if (subscription.status === 'cancelled') {
+    return Boolean(expiresAt && expiresAt > now)
+  }
+
+  return false
+}

@@ -142,6 +142,48 @@ export async function getLatestInstructorSubscription(instructorId: string) {
   return normalizeSubscription(data)
 }
 
+export async function getLatestApprovedInstructorSubscription(instructorId: string) {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('instructor_subscriptions')
+    .select(
+      'id, instructor_id, plan, value, status, external_reference, mp_preference_id, mp_payment_id, payment_url, paid_at, expires_at, created_at'
+    )
+    .eq('instructor_id', instructorId)
+    .eq('status', 'approved')
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[subscriptions] getLatestApprovedInstructorSubscription error:', error.message)
+    return null
+  }
+
+  return normalizeSubscription(data)
+}
+
+export async function getLatestManageableInstructorSubscription(instructorId: string) {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('instructor_subscriptions')
+    .select(
+      'id, instructor_id, plan, value, status, external_reference, mp_preference_id, mp_payment_id, payment_url, paid_at, expires_at, created_at'
+    )
+    .eq('instructor_id', instructorId)
+    .in('status', ['approved', 'pending'])
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.error('[subscriptions] getLatestManageableInstructorSubscription error:', error.message)
+    return null
+  }
+
+  return normalizeSubscription(data)
+}
+
 export async function getLatestPendingInstructorSubscription(instructorId: string) {
   const admin = createAdminClient()
   const { data, error } = await admin
@@ -161,6 +203,38 @@ export async function getLatestPendingInstructorSubscription(instructorId: strin
   }
 
   return normalizeSubscription(data)
+}
+
+export async function getCheckoutEligibleInstructorSubscription(instructorId: string) {
+  const approvedSubscription = await getLatestApprovedInstructorSubscription(instructorId)
+  const now = Date.now()
+
+  if (approvedSubscription) {
+    const expiresAt = approvedSubscription.expires_at
+      ? new Date(approvedSubscription.expires_at).getTime()
+      : null
+
+    if (!expiresAt || expiresAt > now) {
+      return {
+        kind: 'approved' as const,
+        subscription: approvedSubscription,
+      }
+    }
+  }
+
+  const pendingSubscription = await getLatestPendingInstructorSubscription(instructorId)
+
+  if (pendingSubscription?.payment_url) {
+    return {
+      kind: 'pending' as const,
+      subscription: pendingSubscription,
+    }
+  }
+
+  return {
+    kind: 'new' as const,
+    subscription: null,
+  }
 }
 
 export async function createInstructorSubscription(instructorId: string, amount = getInstructorMembershipAmount()) {
@@ -549,6 +623,48 @@ export async function syncInstructorSubscriptionPreApprovalForInstructor(
     revalidatePath('/painel')
     revalidatePath('/buscar')
   }
+
+  return normalizeSubscription(updatedSubscription)
+}
+
+export async function cancelInstructorSubscription(instructorId: string) {
+  const admin = createAdminClient()
+  const subscription = await getLatestManageableInstructorSubscription(instructorId)
+
+  if (!subscription) {
+    throw new Error('Nenhuma assinatura ativa ou pendente encontrada para cancelamento.')
+  }
+
+  if (!subscription.mp_preference_id) {
+    throw new Error('Assinatura sem identificador do Mercado Pago para cancelamento.')
+  }
+
+  const preApprovalClient = getMercadoPagoPreApprovalClient()
+  await preApprovalClient.update({
+    id: subscription.mp_preference_id,
+    body: {
+      status: 'cancelled',
+    },
+  })
+
+  const { data: updatedSubscription, error: updateError } = await admin
+    .from('instructor_subscriptions')
+    .update({
+      status: 'cancelled',
+    })
+    .eq('id', subscription.id)
+    .eq('instructor_id', instructorId)
+    .select(
+      'id, instructor_id, plan, value, status, external_reference, mp_preference_id, mp_payment_id, payment_url, paid_at, expires_at, created_at'
+    )
+    .single()
+
+  if (updateError) {
+    throw new Error(updateError.message)
+  }
+
+  revalidatePath('/planos')
+  revalidatePath('/painel')
 
   return normalizeSubscription(updatedSubscription)
 }

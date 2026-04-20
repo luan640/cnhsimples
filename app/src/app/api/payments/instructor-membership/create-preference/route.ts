@@ -4,11 +4,12 @@ import { createClient } from '@/lib/supabase/server'
 import { getInstructorProfile } from '@/lib/instructors/dashboard'
 import {
   attachPreApprovalToSubscription,
+  getCheckoutEligibleInstructorSubscription,
   createInstructorSubscription,
   getInstructorMembershipAmount,
   getInstructorMembershipPreapprovalPlanId,
 } from '@/lib/instructors/subscriptions'
-import { getMercadoPagoPreApprovalClient, getMercadoPagoPreApprovalPlanClient } from '@/lib/mercadopago/client'
+import { getMercadoPagoPreApprovalPlanClient } from '@/lib/mercadopago/client'
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) {
@@ -78,19 +79,38 @@ export async function POST() {
 
   try {
     const amount = getInstructorMembershipAmount()
-    const subscription = await createInstructorSubscription(profile.id, amount)
     const preapprovalPlanId = getInstructorMembershipPreapprovalPlanId()
-
-    if (!subscription) {
-      return NextResponse.json(
-        { error: 'Nao foi possivel criar o registro da mensalidade.' },
-        { status: 500 }
-      )
-    }
 
     if (!preapprovalPlanId) {
       return NextResponse.json(
         { error: 'MERCADO_PAGO_PREAPPROVAL_PLAN_ID nao configurado.' },
+        { status: 500 }
+      )
+    }
+
+    const checkoutState = await getCheckoutEligibleInstructorSubscription(profile.id)
+
+    if (checkoutState.kind === 'approved') {
+      return NextResponse.json(
+        { error: 'Sua assinatura ja esta ativa.' },
+        { status: 409 }
+      )
+    }
+
+    if (checkoutState.kind === 'pending') {
+      return NextResponse.json({
+        ok: true,
+        checkoutUrl: checkoutState.subscription.payment_url,
+        subscriptionId: checkoutState.subscription.id,
+        reused: true,
+      })
+    }
+
+    const subscription = await createInstructorSubscription(profile.id, amount)
+
+    if (!subscription) {
+      return NextResponse.json(
+        { error: 'Nao foi possivel criar o registro da mensalidade.' },
         { status: 500 }
       )
     }

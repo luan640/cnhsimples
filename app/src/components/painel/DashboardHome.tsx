@@ -6,16 +6,13 @@ import {
   BookOpen,
   CalendarCheck,
   Clock,
-  CreditCard,
   DollarSign,
-  ShieldCheck,
   Star,
   TrendingUp,
   User,
   Wallet,
 } from 'lucide-react'
 import {
-  getInstructorMembershipAmount,
   type InstructorSubscription,
 } from '@/lib/instructors/subscription-shared'
 import {
@@ -30,7 +27,6 @@ import {
   YAxis,
 } from 'recharts'
 
-import { MembershipPaymentButton } from '@/components/painel/MembershipPaymentButton'
 import type { DashboardStats, InstructorProfile } from '@/lib/instructors/dashboard'
 
 interface Props {
@@ -121,7 +117,7 @@ function EmptyChart({ message }: { message: string }) {
   )
 }
 
-export function DashboardHome({ profile, stats, membership, membershipFlash }: Props) {
+export function DashboardHome({ profile, stats }: Props) {
   const hoje = new Date().toLocaleDateString('pt-BR', {
     weekday: 'long',
     day: 'numeric',
@@ -132,12 +128,6 @@ export function DashboardHome({ profile, stats, membership, membershipFlash }: P
   const hora = new Date().getHours()
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite'
   const proximaAula = stats.proximasAulas[0]
-  const membershipAmount = getInstructorMembershipAmount()
-  const membershipStatus =
-    membership?.status === 'approved' ? 'Ativa' : membership?.status === 'pending' ? 'Pendente' : 'Renovar'
-  const membershipExpiresAt = membership?.expires_at
-    ? new Date(membership.expires_at).toLocaleDateString('pt-BR')
-    : null
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-6xl">
@@ -148,68 +138,6 @@ export function DashboardHome({ profile, stats, membership, membershipFlash }: P
         <p className="text-sm capitalize mt-0.5" style={{ color: '#64748B' }}>
           {hoje}
         </p>
-      </div>
-
-      <div
-        className="bg-white rounded-[12px] border border-[#E2E8F0] p-5 mb-6"
-        style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
-      >
-        <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="flex items-start gap-3">
-            <div
-              className="w-11 h-11 rounded-[10px] flex items-center justify-center shrink-0"
-              style={{ background: '#ECFDF5' }}
-            >
-              {membership?.status === 'approved' ? (
-                <ShieldCheck size={20} style={{ color: '#059669' }} />
-              ) : (
-                <CreditCard size={20} style={{ color: '#0284C7' }} />
-              )}
-            </div>
-            <div>
-              <p className="text-sm font-semibold" style={{ color: '#0F172A' }}>
-                Mensalidade do instrutor
-              </p>
-              <p className="text-sm" style={{ color: '#64748B' }}>
-                {membershipStatus}
-                {membershipExpiresAt ? ` - vence em ${membershipExpiresAt}` : ' - sem vencimento registrado'}
-              </p>
-              <p className="text-xs mt-1" style={{ color: '#94A3B8' }}>
-                Valor atual: R$ {membershipAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-          </div>
-
-          <div className="w-full md:w-auto md:min-w-[240px]">
-            <MembershipPaymentButton amount={membershipAmount} />
-          </div>
-        </div>
-
-        {membershipFlash ? (
-          <div
-            className="mt-4 rounded-[10px] px-4 py-3 text-sm"
-            style={{
-              background:
-                membershipFlash === 'success'
-                  ? '#ECFDF5'
-                  : membershipFlash === 'error'
-                    ? '#FEF2F2'
-                    : '#FFFBEB',
-              color:
-                membershipFlash === 'success'
-                  ? '#065F46'
-                  : membershipFlash === 'error'
-                    ? '#B91C1C'
-                    : '#92400E',
-            }}
-          >
-            {membershipFlash === 'success'
-              ? 'Pagamento da mensalidade confirmado com sucesso.'
-              : membershipFlash === 'error'
-                ? 'Nao foi possivel confirmar o pagamento automaticamente.'
-                : 'Seu pagamento esta em processamento.'}
-          </div>
-        ) : null}
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">

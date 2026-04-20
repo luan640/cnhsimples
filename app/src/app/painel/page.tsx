@@ -13,6 +13,7 @@ import {
   getLatestInstructorSubscription,
   syncLatestInstructorPlanSubscriptionByEmail,
 } from '@/lib/instructors/subscriptions'
+import { isInstructorSubscriptionActiveForAccess } from '@/lib/instructors/subscription-shared'
 import { createClient } from '@/lib/supabase/server'
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -60,15 +61,15 @@ export default async function PainelPage({ searchParams }: { searchParams: Searc
     }
   }
 
-  const hasApprovedMembership = membership?.status === 'approved'
+  const hasActiveMembershipAccess = isInstructorSubscriptionActiveForAccess(membership)
   const shouldShowOnboardingWizard =
     !profile ||
     status === 'pending' ||
     status === 'docs_rejected' ||
     (
+      !hasActiveMembershipAccess &&
       status !== 'inactive' &&
-      status !== 'suspended' &&
-      !hasApprovedMembership
+      status !== 'suspended'
     )
 
   if (shouldShowOnboardingWizard) {

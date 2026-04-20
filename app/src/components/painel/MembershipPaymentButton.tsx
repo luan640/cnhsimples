@@ -5,10 +5,11 @@ import { CreditCard, LoaderCircle } from 'lucide-react'
 
 type Props = {
   amount: number
+  label?: string
   className?: string
 }
 
-export function MembershipPaymentButton({ amount, className }: Props) {
+export function MembershipPaymentButton({ amount, label, className }: Props) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -46,7 +47,7 @@ export function MembershipPaymentButton({ amount, className }: Props) {
         style={{ background: '#3ECF8E', color: '#0F172A' }}
       >
         {loading ? <LoaderCircle size={16} className="animate-spin" /> : <CreditCard size={16} />}
-        {loading ? 'Redirecionando...' : `Pagar mensalidade - R$ ${amount.toFixed(2).replace('.', ',')}/mes`}
+        {loading ? 'Redirecionando...' : (label ?? `Pagar mensalidade - R$ ${amount.toFixed(2).replace('.', ',')}/mes`)}
       </button>
 
       {error && (
