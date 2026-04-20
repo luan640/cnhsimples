@@ -4,13 +4,14 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  LayoutDashboard, CalendarDays, Wallet, User, Car, LogOut, BadgeDollarSign,
+  LayoutDashboard, CalendarDays, Wallet, User, Car, LogOut, BadgeDollarSign, BookOpen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
 const NAV_ITEMS = [
   { href: '/painel', icon: LayoutDashboard, label: 'Painel' },
   { href: '/agenda', icon: CalendarDays, label: 'Agenda' },
+  { href: '/servicos', icon: BookOpen, label: 'Serviços' },
   { href: '/painel/planos', icon: BadgeDollarSign, label: 'Plano' },
   { href: '/carteira', icon: Wallet, label: 'Carteira' },
   { href: '/perfil/instrutor', icon: User, label: 'Meu Perfil' },
