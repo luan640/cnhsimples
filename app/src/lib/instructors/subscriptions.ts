@@ -101,13 +101,16 @@ export async function syncLatestInstructorPlanSubscriptionByEmail(
     options: {
       payer_email: payerEmail.trim(),
       preapproval_plan_id: preapprovalPlanId,
-      sort: 'date_created_desc',
     },
   })
 
-  const approvedSubscription = response.results?.find(
-    (item) => item.id && item.status === 'authorized'
-  )
+  const approvedSubscription = [...(response.results ?? [])]
+    .filter((item) => item.id && item.status === 'authorized')
+    .sort((a, b) => {
+      const aDate = a.date_created ? new Date(String(a.date_created)).getTime() : 0
+      const bDate = b.date_created ? new Date(String(b.date_created)).getTime() : 0
+      return bDate - aDate
+    })[0]
 
   if (!approvedSubscription?.id) {
     return null
