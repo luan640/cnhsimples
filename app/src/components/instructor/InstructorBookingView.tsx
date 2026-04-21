@@ -2,7 +2,7 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import {
   AlertCircle,
   ArrowLeft,
@@ -34,11 +34,18 @@ type Props = {
   instructor: PublicInstructorDetail
   studentLat: number | null
   studentLon: number | null
+  studentCep: string | null
 }
 
 type LessonMode = 'meeting' | 'pickup'
 type PaymentMethod = 'pix' | 'card' | 'mercado_pago'
 type Step = 1 | 2 | 3 | 4
+
+type CepLookupResult = {
+  cep: string
+  latitude: string
+  longitude: string
+}
 
 const STEPS = [
   { n: 1, label: 'Serviço' },
@@ -58,6 +65,59 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
     Math.sin(dLat / 2) ** 2 +
     Math.cos(r(lat1)) * Math.cos(r(lat2)) * Math.sin(dLon / 2) ** 2
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+}
+
+function slotStartMinutes(slot: { hour: number; minute: number }) {
+  return slot.hour * 60 + slot.minute
+}
+
+function countPickupTrips(
+  selectedSlots: { id: string; date: string; hour: number; minute: number; slot_duration_minutes: number }[],
+  allSlots: { id: string; date: string; hour: number; minute: number; slot_duration_minutes: number }[]
+) {
+  if (selectedSlots.length === 0) return 0
+
+  const slotsByDate = new Map<string, typeof allSlots>()
+  for (const slot of allSlots) {
+    const current = slotsByDate.get(slot.date) ?? []
+    current.push(slot)
+    slotsByDate.set(slot.date, current)
+  }
+
+  for (const [date, slots] of slotsByDate.entries()) {
+    slots.sort((left, right) => slotStartMinutes(left) - slotStartMinutes(right))
+    slotsByDate.set(date, slots)
+  }
+
+  let trips = 0
+  let previous: { id: string; date: string } | null = null
+
+  for (const slot of selectedSlots) {
+    if (!previous) {
+      trips += 1
+      previous = { id: slot.id, date: slot.date }
+      continue
+    }
+
+    if (previous.date !== slot.date) {
+      trips += 1
+      previous = { id: slot.id, date: slot.date }
+      continue
+    }
+
+    const daySlots = slotsByDate.get(slot.date) ?? []
+    const previousIndex = daySlots.findIndex((entry) => entry.id === previous?.id)
+    const currentIndex = daySlots.findIndex((entry) => entry.id === slot.id)
+    const isAdjacent = previousIndex >= 0 && currentIndex === previousIndex + 1
+
+    if (!isAdjacent) {
+      trips += 1
+    }
+
+    previous = { id: slot.id, date: slot.date }
+  }
+
+  return trips
 }
 
 function findPickupRange(ranges: PickupRange[], km: number): PickupRange | null {
@@ -89,6 +149,11 @@ function fmtMonth(value: string) {
 
 function fmtTime(h: number, m: number) {
   return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+}
+
+function formatCep(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 8)
+  return digits.replace(/^(\d{5})(\d)/, '$1-$2')
 }
 
 // ── small shared atoms ────────────────────────────────────────────────────────
@@ -302,28 +367,69 @@ function PickupPanel({
   distanceKm,
   ranges,
   matched,
-  lessonCount,
-  isPkg,
   hasStudent,
   hasInstructor,
+  cep,
+  onCepChange,
+  cepStatus,
+  isCepPending,
 }: {
   distanceKm: number | null
   ranges: PickupRange[]
   matched: PickupRange | null
-  lessonCount: number
-  isPkg: boolean
   hasStudent: boolean
   hasInstructor: boolean
+  cep: string
+  onCepChange: (value: string) => void
+  cepStatus: string
+  isCepPending: boolean
 }) {
-  if (!hasStudent || !hasInstructor) {
+  if (!hasInstructor) {
     return (
       <div className="mt-4 flex items-start gap-2 rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3">
         <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-500" />
         <p className="text-xs leading-5 text-amber-700">
-          {!hasStudent
-            ? 'Localização não encontrada no seu perfil. Atualize seu CEP para calcular a distância.'
-            : 'Localização do instrutor indisponível. Confirme diretamente com ele.'}
+          Localização do instrutor indisponível. Confirme diretamente com ele.
         </p>
+      </div>
+    )
+  }
+
+  if (!hasStudent) {
+    return (
+      <div
+        className="mt-4 rounded-[12px] border border-[#FDE68A] bg-[#FFFBEB] px-4 py-4"
+        style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.04)' }}
+      >
+        <div className="flex items-start gap-2">
+          <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-500" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-amber-900">Informe seu CEP para calcular a distância</p>
+            <p className="mt-1 text-xs leading-5 text-amber-700">
+              Seu perfil ainda não tem localização suficiente para validar a busca em casa. Digite o CEP e vamos calcular automaticamente.
+            </p>
+          </div>
+        </div>
+
+        <div className="mt-4">
+          <label htmlFor="pickup-cep" className="mb-1.5 block text-xs font-semibold uppercase tracking-[0.14em] text-amber-900">
+            CEP do aluno
+          </label>
+          <input
+            id="pickup-cep"
+            type="text"
+            inputMode="numeric"
+            value={cep}
+            onChange={(event) => onCepChange(formatCep(event.target.value))}
+            placeholder="00000-000"
+            className="min-h-11 w-full rounded-[10px] border border-[#FCD34D] bg-white px-3 text-sm text-[#0F172A] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#F59E0B]"
+          />
+          <p className="mt-2 text-xs text-amber-700">
+            {isCepPending
+              ? 'Buscando localização pelo CEP...'
+              : cepStatus || 'Informe um CEP válido para verificar se está no raio de atendimento.'}
+          </p>
+        </div>
       </div>
     )
   }
@@ -396,13 +502,10 @@ function PickupPanel({
               <CarFront size={14} className="mt-0.5 shrink-0 text-[#16A34A]" />
               <div>
                 <p className="text-xs font-semibold text-[#15803D]">
-                  +{fmt(matched.price)}/aula
-                  {lessonCount > 1
-                    ? ` × ${lessonCount} ${isPkg ? 'aulas do pacote' : 'aulas'} = +${fmt(matched.price * lessonCount)}`
-                    : ''}
+                  +{fmt(matched.price)} por deslocamento
                 </p>
                 <p className="mt-0.5 text-[11px] text-[#166534]">
-                  Cobrada por aula, aplicada a {isPkg ? `todas as ${lessonCount} aulas` : 'cada aula selecionada'}.
+                  Horários seguidos no mesmo dia contam como um único deslocamento. Dias diferentes ou horários com intervalo geram nova taxa.
                 </p>
               </div>
             </div>
@@ -423,6 +526,10 @@ function StepFormat({
   pickupRanges,
   studentLat,
   studentLon,
+  pickupCep,
+  onPickupCepChange,
+  pickupCepStatus,
+  isPickupCepPending,
   instructor,
   isOutOfRange,
 }: {
@@ -435,11 +542,13 @@ function StepFormat({
   pickupRanges: PickupRange[]
   studentLat: number | null
   studentLon: number | null
+  pickupCep: string
+  onPickupCepChange: (value: string) => void
+  pickupCepStatus: string
+  isPickupCepPending: boolean
   instructor: PublicInstructorDetail
   isOutOfRange: boolean
 }) {
-  const lessonCount = isPkg ? service.lesson_count : 1
-
   return (
     <div>
       <SectionHeading step={2} title="Formato da aula" />
@@ -512,10 +621,12 @@ function StepFormat({
           distanceKm={distanceKm}
           ranges={pickupRanges}
           matched={matchedRange}
-          lessonCount={lessonCount}
-          isPkg={isPkg}
           hasStudent={studentLat != null && studentLon != null}
           hasInstructor={instructor.latitude != null && instructor.longitude != null}
+          cep={pickupCep}
+          onCepChange={onPickupCepChange}
+          cepStatus={pickupCepStatus}
+          isCepPending={isPickupCepPending}
         />
       )}
     </div>
@@ -669,7 +780,7 @@ function StepPayment({
   selectedSlotCount,
   lessonMode,
   pickupSurchargePerLesson,
-  lessonCount,
+  pickupTripCount,
   baseAmount,
   totalAmount,
   matchedRange,
@@ -681,12 +792,12 @@ function StepPayment({
   selectedSlotCount: number
   lessonMode: LessonMode
   pickupSurchargePerLesson: number
-  lessonCount: number
+  pickupTripCount: number
   baseAmount: number
   totalAmount: number
   matchedRange: PickupRange | null
 }) {
-  const pickupTotal = pickupSurchargePerLesson * lessonCount
+  const pickupTotal = pickupSurchargePerLesson * pickupTripCount
 
   const METHODS = [
     { id: 'pix' as const, title: 'PIX', description: 'Pagamento instantâneo com confirmação rápida.', icon: QrCode },
@@ -715,7 +826,7 @@ function StepPayment({
           {lessonMode === 'pickup' && matchedRange && pickupSurchargePerLesson > 0 && (
             <div className="flex items-center justify-between text-sm">
               <span className="text-[#64748B]">
-                Busca em casa ({lessonCount} aula{lessonCount > 1 ? 's' : ''} × {fmt(pickupSurchargePerLesson)})
+                Busca em casa ({pickupTripCount} deslocamento{pickupTripCount > 1 ? 's' : ''} × {fmt(pickupSurchargePerLesson)})
               </span>
               <span className="font-semibold text-[#F97316]">+{fmt(pickupTotal)}</span>
             </div>
@@ -808,23 +919,39 @@ function StepIndicator({ current }: { current: Step }) {
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export function InstructorBookingView({ instructor, studentLat, studentLon }: Props) {
+export function InstructorBookingView({ instructor, studentLat, studentLon, studentCep }: Props) {
   const [step, setStep] = useState<Step>(1)
   const [selectedServiceId, setSelectedServiceId] = useState(instructor.services[0]?.id ?? '')
   const [lessonMode, setLessonMode] = useState<LessonMode>('meeting')
   const [selectedDate, setSelectedDate] = useState(instructor.available_slots[0]?.date ?? '')
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
+  const [pickupCep, setPickupCep] = useState(studentCep ? formatCep(studentCep) : '')
+  const [pickupCepStatus, setPickupCepStatus] = useState('')
+  const [manualStudentLat, setManualStudentLat] = useState<number | null>(null)
+  const [manualStudentLon, setManualStudentLon] = useState<number | null>(null)
+  const [isPickupCepPending, startPickupCepTransition] = useTransition()
 
   const selectedService = instructor.services.find((s) => s.id === selectedServiceId) ?? null
   const isPkg = selectedService?.service_type === 'package'
   const packageSlotLimit = isPkg ? (selectedService?.lesson_count ?? 1) : null
   const pickupRanges = selectedService?.pickup_ranges ?? []
 
+  const resolvedStudentLat = studentLat ?? manualStudentLat
+  const resolvedStudentLon = studentLon ?? manualStudentLon
+
   const distanceKm = useMemo<number | null>(() => {
-    if (!studentLat || !studentLon || !instructor.latitude || !instructor.longitude) return null
-    return haversineKm(studentLat, studentLon, instructor.latitude, instructor.longitude)
-  }, [studentLat, studentLon, instructor.latitude, instructor.longitude])
+    if (
+      resolvedStudentLat == null ||
+      resolvedStudentLon == null ||
+      instructor.latitude == null ||
+      instructor.longitude == null
+    ) {
+      return null
+    }
+
+    return haversineKm(resolvedStudentLat, resolvedStudentLon, instructor.latitude, instructor.longitude)
+  }, [resolvedStudentLat, resolvedStudentLon, instructor.latitude, instructor.longitude])
 
   const matchedPickupRange = useMemo<PickupRange | null>(() => {
     if (lessonMode !== 'pickup' || distanceKm === null) return null
@@ -853,20 +980,37 @@ export function InstructorBookingView({ instructor, studentLat, studentLon }: Pr
     const ids = new Set(selectedSlotIds)
     return instructor.available_slots
       .filter((s) => ids.has(s.id))
-      .sort((a, b) => `${a.date}${a.hour}${a.minute}`.localeCompare(`${b.date}${b.hour}${b.minute}`))
+      .sort((a, b) => {
+        if (a.date !== b.date) {
+          return a.date.localeCompare(b.date)
+        }
+
+        return slotStartMinutes(a) - slotStartMinutes(b)
+      })
   }, [instructor.available_slots, selectedSlotIds])
 
   const selectedSlotCount = selectedSlots.length
-  const lessonCount = isPkg ? (selectedService?.lesson_count ?? 0) : selectedSlotCount
+  const pickupTripCount =
+    selectedSlotCount > 0 ? countPickupTrips(selectedSlots, instructor.available_slots) : 0
+  const previewPickupTripCount = selectedSlotCount > 0 ? pickupTripCount : lessonMode === 'pickup' ? 1 : 0
 
   const baseAmount = useMemo(() => {
     if (!selectedService || selectedSlotCount === 0) return 0
     return isPkg ? selectedService.price : selectedService.price * selectedSlotCount
   }, [selectedService, selectedSlotCount, isPkg])
 
+  const previewBaseAmount = useMemo(() => {
+    if (!selectedService) return 0
+    if (isPkg) return selectedService.price
+    return selectedService.price * Math.max(selectedSlotCount, 1)
+  }, [selectedService, selectedSlotCount, isPkg])
+
   const pickupSurchargePerLesson = matchedPickupRange?.price ?? 0
-  const pickupSurchargeTotal = lessonMode === 'pickup' ? pickupSurchargePerLesson * lessonCount : 0
+  const pickupSurchargeTotal = lessonMode === 'pickup' ? pickupSurchargePerLesson * pickupTripCount : 0
   const totalAmount = baseAmount + pickupSurchargeTotal
+  const previewPickupSurchargeTotal =
+    lessonMode === 'pickup' ? pickupSurchargePerLesson * previewPickupTripCount : 0
+  const previewTotalAmount = previewBaseAmount + previewPickupSurchargeTotal
 
   useEffect(() => {
     if (!selectedService?.accepts_home_pickup && lessonMode === 'pickup') setLessonMode('meeting')
@@ -884,6 +1028,58 @@ export function InstructorBookingView({ instructor, studentLat, studentLon }: Pr
 
   useEffect(() => { setSelectedSlotIds([]) }, [selectedServiceId])
 
+  useEffect(() => {
+    if (studentLat != null && studentLon != null) {
+      return
+    }
+
+    const digits = pickupCep.replace(/\D/g, '')
+    if (digits.length !== 8) {
+      setManualStudentLat(null)
+      setManualStudentLon(null)
+      if (pickupCep.length === 0) {
+        setPickupCepStatus('')
+      } else {
+        setPickupCepStatus('Informe um CEP válido para calcular a distância.')
+      }
+      return
+    }
+
+    startPickupCepTransition(async () => {
+      setPickupCepStatus('Buscando localização...')
+
+      try {
+        const response = await fetch(`/api/nominatim/cep?cep=${digits}`)
+        if (!response.ok) {
+          setManualStudentLat(null)
+          setManualStudentLon(null)
+          setPickupCepStatus('Não foi possível localizar esse CEP.')
+          return
+        }
+
+        const result: CepLookupResult = await response.json()
+        const nextLat = Number(result.latitude)
+        const nextLon = Number(result.longitude)
+
+        if (!Number.isFinite(nextLat) || !Number.isFinite(nextLon)) {
+          setManualStudentLat(null)
+          setManualStudentLon(null)
+          setPickupCepStatus('O CEP não retornou coordenadas válidas.')
+          return
+        }
+
+        setManualStudentLat(nextLat)
+        setManualStudentLon(nextLon)
+        setPickupCep(formatCep(result.cep || digits))
+        setPickupCepStatus('Localização encontrada. Distância calculada automaticamente.')
+      } catch {
+        setManualStudentLat(null)
+        setManualStudentLon(null)
+        setPickupCepStatus('Erro ao consultar o CEP.')
+      }
+    })
+  }, [pickupCep, startPickupCepTransition, studentLat, studentLon])
+
   function toggleSlot(slotId: string) {
     setSelectedSlotIds((cur) => {
       if (cur.includes(slotId)) return cur.filter((id) => id !== slotId)
@@ -892,10 +1088,16 @@ export function InstructorBookingView({ instructor, studentLat, studentLon }: Pr
     })
   }
 
+  const hasPickupCoordinates =
+    resolvedStudentLat != null &&
+    resolvedStudentLon != null &&
+    instructor.latitude != null &&
+    instructor.longitude != null
+
   // per-step next validity
   const canNext: Record<Step, boolean> = {
     1: Boolean(selectedServiceId),
-    2: !isPickupOutOfRange,
+    2: lessonMode !== 'pickup' || (hasPickupCoordinates && !isPickupOutOfRange),
     3: selectedSlotCount > 0 && (!isPkg || selectedSlotCount === (selectedService?.lesson_count ?? 0)),
     4: true,
   }
@@ -949,8 +1151,12 @@ export function InstructorBookingView({ instructor, studentLat, studentLon }: Pr
             isPkg={isPkg}
             matchedRange={matchedPickupRange}
             pickupRanges={pickupRanges}
-            studentLat={studentLat}
-            studentLon={studentLon}
+            studentLat={resolvedStudentLat}
+            studentLon={resolvedStudentLon}
+            pickupCep={pickupCep}
+            onPickupCepChange={setPickupCep}
+            pickupCepStatus={pickupCepStatus}
+            isPickupCepPending={isPickupCepPending}
             instructor={instructor}
             isOutOfRange={isPickupOutOfRange}
           />
@@ -979,7 +1185,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon }: Pr
             selectedSlotCount={selectedSlotCount}
             lessonMode={lessonMode}
             pickupSurchargePerLesson={pickupSurchargePerLesson}
-            lessonCount={lessonCount}
+            pickupTripCount={pickupTripCount}
             baseAmount={baseAmount}
             totalAmount={totalAmount}
             matchedRange={matchedPickupRange}
@@ -1014,7 +1220,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon }: Pr
                     ? fmt(totalAmount)
                     : step >= 3 && selectedSlotCount > 0
                       ? `${fmt(totalAmount)}${pickupSurchargeTotal > 0 ? ` (incl. busca)` : ''}`
-                      : fmt(selectedService.price)}
+                      : `${fmt(previewTotalAmount)}${previewPickupSurchargeTotal > 0 ? ` (incl. busca)` : ''}`}
                 </p>
               </>
             )}
