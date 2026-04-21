@@ -113,10 +113,17 @@ export async function POST() {
       )
     }
 
+    const preApprovalPlanId = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID
+
+    if (!preApprovalPlanId?.trim()) {
+      return NextResponse.json({ error: 'MERCADO_PAGO_PREAPPROVAL_PLAN_ID nao configurado.' }, { status: 500 })
+    }
+
     const preApprovalClient = getMercadoPagoPreApprovalClient()
     const backUrl = `${appUrl}/api/payments/instructor-membership/return?subscription_id=${subscription.id}`
     const preApproval = await preApprovalClient.create({
       body: {
+        preapproval_plan_id: preApprovalPlanId,
         reason: 'Mensalidade de instrutor',
         external_reference: subscription.external_reference,
         payer_email: user.email.trim(),
