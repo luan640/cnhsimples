@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+
 import { InstructorCard } from '@/components/instructor/InstructorCard'
 import type { InstructorCard as InstructorCardType } from '@/types'
 
@@ -19,7 +20,12 @@ const MOCK_INSTRUCTORS: InstructorCardType[] = [
     is_super_instructor: true,
     is_new: false,
     is_trending: false,
-    bio: 'Instrutor com 8 anos de experiência, especialista em alunos com ansiedade ao volante.',
+    bio: 'Instrutor com 8 anos de experiencia, especialista em alunos com ansiedade ao volante.',
+    individual_prices: { B: 120 },
+    accepts_highway: true,
+    accepts_night_driving: true,
+    accepts_parking_practice: true,
+    student_chooses_destination: true,
     status: 'active',
   },
   {
@@ -37,12 +43,17 @@ const MOCK_INSTRUCTORS: InstructorCardType[] = [
     is_super_instructor: false,
     is_new: false,
     is_trending: true,
-    bio: 'Instrutora certificada, foco em preparação para o exame do DETRAN-CE.',
+    bio: 'Instrutora certificada, foco em preparacao para o exame do DETRAN-CE.',
+    individual_prices: { A: 100, AB: 100 },
+    accepts_highway: true,
+    accepts_night_driving: false,
+    accepts_parking_practice: true,
+    student_chooses_destination: false,
     status: 'active',
   },
   {
     id: '3',
-    full_name: 'Rafael Mendonça',
+    full_name: 'Rafael Mendonca',
     photo_url: null,
     category: 'B',
     neighborhood: 'Maraponga',
@@ -55,7 +66,12 @@ const MOCK_INSTRUCTORS: InstructorCardType[] = [
     is_super_instructor: false,
     is_new: false,
     is_trending: false,
-    bio: 'Atendo Maraponga, Mondubim e arredores. Horários flexíveis inclusive nos fins de semana.',
+    bio: 'Atendo Maraponga, Mondubim e arredores. Horarios flexiveis inclusive nos fins de semana.',
+    individual_prices: { B: 90 },
+    accepts_highway: false,
+    accepts_night_driving: true,
+    accepts_parking_practice: true,
+    student_chooses_destination: true,
     status: 'active',
   },
   {
@@ -66,7 +82,7 @@ const MOCK_INSTRUCTORS: InstructorCardType[] = [
     neighborhood: 'Benfica',
     city: 'Fortaleza',
     hourly_rate: 85,
-    rating: 5.0,
+    rating: 5,
     review_count: 11,
     lesson_count: 38,
     student_count: 12,
@@ -74,6 +90,11 @@ const MOCK_INSTRUCTORS: InstructorCardType[] = [
     is_new: true,
     is_trending: false,
     bio: 'Nova na plataforma. Especialista em Categoria A, motociclismo para iniciantes.',
+    individual_prices: { A: 85 },
+    accepts_highway: false,
+    accepts_night_driving: false,
+    accepts_parking_practice: true,
+    student_chooses_destination: false,
     status: 'active',
   },
 ]
@@ -82,11 +103,10 @@ export function FeaturedInstructors() {
   return (
     <section className="py-16 md:py-24" style={{ background: '#ffffff' }}>
       <div className="max-w-7xl mx-auto px-4 md:px-6">
-        {/* heading */}
         <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-10">
           <div>
             <h2 className="text-2xl md:text-3xl font-bold text-[#0F172A] mb-2">
-              Conheça alguns instrutores
+              Conheca alguns instrutores
             </h2>
             <p className="text-[#64748B]">Todos credenciados pelo DETRAN-CE</p>
           </div>
@@ -100,19 +120,14 @@ export function FeaturedInstructors() {
           </Link>
         </div>
 
-        {/* cards: horizontal scroll on mobile, grid on desktop */}
         <div className="flex md:grid md:grid-cols-4 gap-5 overflow-x-auto md:overflow-visible pb-4 md:pb-0 snap-x snap-mandatory md:snap-none -mx-4 md:mx-0 px-4 md:px-0">
-          {MOCK_INSTRUCTORS.map(instructor => (
-            <div
-              key={instructor.id}
-              className="snap-start shrink-0 w-[260px] md:w-auto"
-            >
+          {MOCK_INSTRUCTORS.map((instructor) => (
+            <div key={instructor.id} className="snap-start shrink-0 w-[260px] md:w-auto">
               <InstructorCard instructor={instructor} />
             </div>
           ))}
         </div>
 
-        {/* mobile CTA */}
         <div className="mt-8 text-center md:hidden">
           <Link
             href="/buscar"
