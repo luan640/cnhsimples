@@ -270,6 +270,10 @@ export function InstructorSignupForm() {
         </h1>
         <p className="mt-3 text-sm leading-6 text-[#64748B]">{submitSuccess}</p>
 
+        <div className="mt-4 rounded-[12px] border border-[#BFDBFE] bg-[#EFF6FF] px-4 py-3 text-sm text-[#1D4ED8]">
+          <span className="font-semibold">Informacao:</span> Confirme o seu cadastro no e-mail enviado.
+        </div>
+
         <div className="mt-6 flex flex-col gap-3 sm:flex-row">
           <Link
             href="/login/instrutor"

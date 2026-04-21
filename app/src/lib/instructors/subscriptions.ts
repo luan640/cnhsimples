@@ -12,7 +12,6 @@ import { getMercadoPagoPaymentClient, getMercadoPagoPreApprovalClient } from '@/
 import { sendInstructorActivatedEmail } from '@/lib/email/notifications'
 
 export { getInstructorMembershipAmount }
-const MEMBERSHIP_PREAPPROVAL_PLAN_ID = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID?.trim() || null
 const MEMBERSHIP_DURATION_DAYS = Number(process.env.INSTRUCTOR_MEMBERSHIP_DURATION_DAYS ?? '30')
 
 function toNumber(value: number | string | null | undefined, fallback = 0) {
@@ -82,17 +81,11 @@ async function mergeUserMetadata(userId: string, patch: Record<string, unknown>)
   })
 }
 
-export function getInstructorMembershipPreapprovalPlanId() {
-  return MEMBERSHIP_PREAPPROVAL_PLAN_ID
-}
-
 export async function syncLatestInstructorPlanSubscriptionByEmail(
   instructorId: string,
   payerEmail: string | null | undefined
 ) {
-  const preapprovalPlanId = getInstructorMembershipPreapprovalPlanId()
-
-  if (!preapprovalPlanId || !payerEmail?.trim()) {
+  if (!payerEmail?.trim()) {
     return null
   }
 
@@ -100,12 +93,17 @@ export async function syncLatestInstructorPlanSubscriptionByEmail(
   const response = await preApprovalClient.search({
     options: {
       payer_email: payerEmail.trim(),
-      preapproval_plan_id: preapprovalPlanId,
     },
   })
 
   const approvedSubscription = [...(response.results ?? [])]
-    .filter((item) => item.id && item.status === 'authorized')
+    .filter(
+      (item) =>
+        item.id &&
+        item.status === 'authorized' &&
+        typeof item.external_reference === 'string' &&
+        item.external_reference.startsWith(`membership:${instructorId}:`)
+    )
     .sort((a, b) => {
       const aDate = a.date_created ? new Date(String(a.date_created)).getTime() : 0
       const bDate = b.date_created ? new Date(String(b.date_created)).getTime() : 0

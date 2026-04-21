@@ -53,6 +53,16 @@ function formatDatetime(isoStr: string | null) {
   }).format(new Date(isoStr))
 }
 
+function getLessonTypeLabel(booking: StudentBooking) {
+  if (booking.service_type === 'package') {
+    const index = booking.package_lesson_index ?? 1
+    const total = booking.package_total_lessons ?? 1
+    return `Pacote (${index}/${total} aula${total > 1 ? 's' : ''})`
+  }
+
+  return 'Aula avulsa'
+}
+
 function getWhatsAppHref(phone: string | null | undefined) {
   const digits = (phone ?? '').replace(/\D/g, '')
   if (digits.length < 10) return null
@@ -136,6 +146,13 @@ function BookingDetailModal({
             <span className="text-xs font-medium" style={{ color: '#64748B' }}>Aula</span>
             <span className="text-xs font-semibold" style={{ color: '#0F172A' }}>
               {formatDate(booking.slot_date)} · {formatTime(booking.slot_hour, booking.slot_minute)}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-[10px] bg-[#F8FAFC] px-3 py-2.5">
+            <span className="text-xs font-medium" style={{ color: '#64748B' }}>Tipo</span>
+            <span className="text-xs font-semibold" style={{ color: '#0F172A' }}>
+              {getLessonTypeLabel(booking)}
             </span>
           </div>
 
