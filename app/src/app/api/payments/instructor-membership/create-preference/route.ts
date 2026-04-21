@@ -8,7 +8,7 @@ import {
   createInstructorSubscription,
   getInstructorMembershipAmount,
 } from '@/lib/instructors/subscriptions'
-import { getMercadoPagoPreApprovalClient } from '@/lib/mercadopago/client'
+import { getMercadoPagoPreApprovalPlanClient } from '@/lib/mercadopago/client'
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) {
@@ -78,6 +78,25 @@ export async function POST() {
 
   try {
     const amount = getInstructorMembershipAmount()
+    const preApprovalPlanId = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID?.trim() || null
+
+    if (!preApprovalPlanId) {
+      return NextResponse.json(
+        { error: 'MERCADO_PAGO_PREAPPROVAL_PLAN_ID nao configurado.' },
+        { status: 500 }
+      )
+    }
+
+    const preApprovalPlanClient = getMercadoPagoPreApprovalPlanClient()
+    const plan = await preApprovalPlanClient.get({ preApprovalPlanId })
+    const checkoutUrl = plan.init_point
+
+    if (!checkoutUrl) {
+      return NextResponse.json(
+        { error: 'Mercado Pago nao retornou a URL do checkout do plano.' },
+        { status: 502 }
+      )
+    }
 
     const checkoutState = await getCheckoutEligibleInstructorSubscription(profile.id)
 
@@ -89,9 +108,14 @@ export async function POST() {
     }
 
     if (checkoutState.kind === 'pending') {
+      await attachPreApprovalToSubscription(checkoutState.subscription.id, {
+        preApprovalId: checkoutState.subscription.mp_preference_id,
+        paymentUrl: checkoutUrl,
+      })
+
       return NextResponse.json({
         ok: true,
-        checkoutUrl: checkoutState.subscription.payment_url,
+        checkoutUrl,
         subscriptionId: checkoutState.subscription.id,
         reused: true,
       })
@@ -106,48 +130,8 @@ export async function POST() {
       )
     }
 
-    if (!user.email?.trim()) {
-      return NextResponse.json(
-        { error: 'Nao foi possivel identificar o e-mail do instrutor para a assinatura.' },
-        { status: 400 }
-      )
-    }
-
-    const preApprovalPlanId = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID
-
-    if (!preApprovalPlanId?.trim()) {
-      return NextResponse.json({ error: 'MERCADO_PAGO_PREAPPROVAL_PLAN_ID nao configurado.' }, { status: 500 })
-    }
-
-    const preApprovalClient = getMercadoPagoPreApprovalClient()
-    const backUrl = `${appUrl}/api/payments/instructor-membership/return?subscription_id=${subscription.id}`
-    const preApproval = await preApprovalClient.create({
-      body: {
-        preapproval_plan_id: preApprovalPlanId,
-        reason: 'Mensalidade de instrutor',
-        external_reference: subscription.external_reference,
-        payer_email: user.email.trim(),
-        back_url: backUrl,
-        status: 'pending',
-        auto_recurring: {
-          frequency: 1,
-          frequency_type: 'months',
-          transaction_amount: amount,
-          currency_id: 'BRL',
-        },
-      },
-    })
-    const checkoutUrl = preApproval.init_point
-
-    if (!checkoutUrl) {
-      return NextResponse.json(
-        { error: 'Mercado Pago nao retornou a URL do checkout da assinatura.' },
-        { status: 502 }
-      )
-    }
-
     await attachPreApprovalToSubscription(subscription.id, {
-      preApprovalId: preApproval.id ?? null,
+      preApprovalId: null,
       paymentUrl: checkoutUrl,
     })
 
