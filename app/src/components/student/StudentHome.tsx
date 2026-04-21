@@ -3,16 +3,21 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import {
   CalendarCheck,
   CalendarClock,
   CheckCircle2,
   ChevronRight,
   Clock,
+  CreditCard,
   History,
+  Loader2,
   MapPin,
+  MessageCircle,
   Search,
+  Smartphone,
+  X,
   XCircle,
 } from 'lucide-react'
 
@@ -37,6 +42,25 @@ function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
 }
 
+function formatDatetime(isoStr: string | null) {
+  if (!isoStr) return '—'
+  return new Intl.DateTimeFormat('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(isoStr))
+}
+
+function getWhatsAppHref(phone: string | null | undefined) {
+  const digits = (phone ?? '').replace(/\D/g, '')
+  if (digits.length < 10) return null
+
+  const normalized = digits.startsWith('55') ? digits : `55${digits}`
+  return `https://wa.me/${normalized}`
+}
+
 function getInitials(name: string) {
   return name
     .split(' ')
@@ -53,13 +77,114 @@ const STATUS_CONFIG = {
   cancelled: { label: 'Cancelada',  color: '#991B1B', bg: '#FEE2E2', icon: XCircle },
 } as const
 
-function BookingChip({ booking }: { booking: StudentBooking }) {
+function BookingDetailModal({
+  booking,
+  onClose,
+}: {
+  booking: StudentBooking
+  onClose: () => void
+}) {
   const cfg = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.pending
-  const Icon = cfg.icon
+  const StatusIcon = cfg.icon
+
+  const PaymentIcon = booking.payment_method === 'pix' ? Smartphone : CreditCard
+  const paymentLabel =
+    booking.payment_method === 'pix'
+      ? 'PIX'
+      : booking.payment_method === 'card'
+        ? 'Cartão de crédito'
+        : '—'
 
   return (
     <div
-      className="flex items-center gap-3 rounded-[12px] border border-[#E2E8F0] bg-white p-3 transition-colors hover:border-[#3ECF8E]"
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      style={{ background: 'rgba(0,0,0,0.45)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-t-[20px] bg-white p-5 sm:rounded-[16px]"
+        style={{ boxShadow: '0 -4px 24px rgba(0,0,0,0.12)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-base font-bold" style={{ color: '#0F172A' }}>
+            Detalhes do agendamento
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[#F1F5F9]"
+            aria-label="Fechar"
+          >
+            <X size={16} style={{ color: '#64748B' }} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between rounded-[10px] bg-[#F8FAFC] px-3 py-2.5">
+            <span className="text-xs font-medium" style={{ color: '#64748B' }}>Status</span>
+            <span
+              className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold"
+              style={{ background: cfg.bg, color: cfg.color }}
+            >
+              <StatusIcon size={11} />
+              {cfg.label}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-[10px] bg-[#F8FAFC] px-3 py-2.5">
+            <span className="text-xs font-medium" style={{ color: '#64748B' }}>Aula</span>
+            <span className="text-xs font-semibold" style={{ color: '#0F172A' }}>
+              {formatDate(booking.slot_date)} · {formatTime(booking.slot_hour, booking.slot_minute)}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-[10px] bg-[#F8FAFC] px-3 py-2.5">
+            <span className="text-xs font-medium" style={{ color: '#64748B' }}>Data da compra</span>
+            <span className="text-xs font-semibold" style={{ color: '#0F172A' }}>
+              {formatDatetime(booking.created_at)}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-[10px] bg-[#F8FAFC] px-3 py-2.5">
+            <span className="text-xs font-medium" style={{ color: '#64748B' }}>Pagamento</span>
+            <span
+              className="inline-flex items-center gap-1.5 text-xs font-semibold"
+              style={{ color: '#0F172A' }}
+            >
+              <PaymentIcon size={13} style={{ color: '#3ECF8E' }} />
+              {paymentLabel}
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between rounded-[10px] bg-[#F8FAFC] px-3 py-2.5">
+            <span className="text-xs font-medium" style={{ color: '#64748B' }}>Valor</span>
+            <span className="text-sm font-bold" style={{ color: '#0F172A' }}>
+              {formatCurrency(booking.value)}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BookingChip({
+  booking,
+  onPress,
+}: {
+  booking: StudentBooking
+  onPress: () => void
+}) {
+  const cfg = STATUS_CONFIG[booking.status] ?? STATUS_CONFIG.pending
+  const Icon = cfg.icon
+  const whatsappHref = getWhatsAppHref(booking.instructor_phone)
+
+  return (
+    <button
+      type="button"
+      onClick={onPress}
+      className="flex w-full items-center gap-3 rounded-[12px] border border-[#E2E8F0] bg-white p-3 text-left transition-colors hover:border-[#3ECF8E]"
       style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
     >
       <div className="relative h-11 w-11 shrink-0 overflow-hidden rounded-[10px] bg-[#F1F5F9]">
@@ -86,17 +211,32 @@ function BookingChip({ booking }: { booking: StudentBooking }) {
         </p>
       </div>
 
-      <div className="flex flex-col items-end gap-1">
-        <span
-          className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-          style={{ background: cfg.bg, color: cfg.color }}
-        >
-          <Icon size={10} />
-          {cfg.label}
-        </span>
+      <div className="flex flex-col items-end gap-1.5">
+        <div className="flex items-center gap-2">
+          {whatsappHref && (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`Falar com ${booking.instructor_name} no WhatsApp`}
+              onClick={(e) => e.stopPropagation()}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-full transition-transform hover:scale-[1.03]"
+              style={{ background: '#DCFCE7', color: '#16A34A' }}
+            >
+              <MessageCircle size={15} />
+            </a>
+          )}
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+            style={{ background: cfg.bg, color: cfg.color }}
+          >
+            <Icon size={10} />
+            {cfg.label}
+          </span>
+        </div>
         <span className="text-xs font-medium text-[#64748B]">{formatCurrency(booking.value)}</span>
       </div>
-    </div>
+    </button>
   )
 }
 
@@ -133,7 +273,10 @@ type Props = {
 
 export function StudentHome({ name, photoUrl, bookings }: Props) {
   const [tab, setTab] = useState<Tab>('futuras')
+  const [selectedBooking, setSelectedBooking] = useState<StudentBooking | null>(null)
   const pathname = usePathname()
+  const router = useRouter()
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -150,8 +293,21 @@ export function StudentHome({ name, photoUrl, bookings }: Props) {
   const hora = new Date().getHours()
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite'
 
+  function navigateTo(href: string) {
+    if (href === pathname) return
+    setPendingHref(href)
+    router.push(href)
+  }
+
   return (
     <div className="min-h-screen" style={{ background: '#F8FAFC' }}>
+      {selectedBooking && (
+        <BookingDetailModal
+          booking={selectedBooking}
+          onClose={() => setSelectedBooking(null)}
+        />
+      )}
+
       <div className="mx-auto max-w-2xl px-4 pb-24 pt-6">
 
         {/* Header */}
@@ -259,7 +415,13 @@ export function StudentHome({ name, photoUrl, bookings }: Props) {
         {/* Booking list */}
         <div className="flex flex-col gap-2">
           {shown.length > 0
-            ? shown.map((booking) => <BookingChip key={booking.id} booking={booking} />)
+            ? shown.map((booking) => (
+                <BookingChip
+                  key={booking.id}
+                  booking={booking}
+                  onPress={() => setSelectedBooking(booking)}
+                />
+              ))
             : <EmptyState tab={tab} />}
         </div>
 
@@ -282,17 +444,24 @@ export function StudentHome({ name, photoUrl, bookings }: Props) {
           { href: '/aluno', icon: CalendarClock, label: 'Minhas aulas' },
           { href: '/buscar', icon: Search, label: 'Buscar' },
         ].map(({ href, icon: Icon, label }) => {
-          const isActive = pathname === href
+          const isActive = pathname === href || pendingHref === href
+          const isPending = pendingHref === href && pathname !== href
           return (
-            <Link
+            <button
               key={href}
-              href={href}
-              className="flex flex-1 flex-col items-center gap-1 py-2.5 transition-opacity"
-              style={{ color: isActive ? '#3ECF8E' : '#a1a1aa' }}
+              type="button"
+              onClick={() => navigateTo(href)}
+              disabled={Boolean(pendingHref && pendingHref !== href && pendingHref !== pathname)}
+              className="flex flex-1 flex-col items-center gap-1 py-2.5 transition-all disabled:opacity-100"
+              style={{
+                color: isActive ? '#3ECF8E' : '#a1a1aa',
+                background: isPending ? 'rgba(62,207,142,0.08)' : 'transparent',
+                transform: isPending ? 'translateY(-1px)' : 'translateY(0)',
+              }}
             >
-              <Icon size={22} />
+              {isPending ? <Loader2 size={22} className="animate-spin" /> : <Icon size={22} />}
               <span className="text-[10px] font-medium">{label}</span>
-            </Link>
+            </button>
           )
         })}
       </nav>

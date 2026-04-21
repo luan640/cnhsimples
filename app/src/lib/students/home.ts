@@ -9,8 +9,11 @@ export type StudentBooking = {
   slot_minute: number
   instructor_name: string
   instructor_photo: string | null
+  instructor_phone: string | null
   value: number
   lesson_mode: 'meeting' | 'pickup' | null
+  created_at: string | null
+  payment_method: 'pix' | 'card' | null
 }
 
 export async function getStudentBookings(studentId: string): Promise<StudentBooking[]> {
@@ -25,8 +28,10 @@ export async function getStudentBookings(studentId: string): Promise<StudentBook
       status,
       value,
       lesson_mode,
+      created_at,
       availability_slots ( date, hour, minute ),
-      instructor_profiles ( full_name, photo_url )
+      instructor_profiles ( full_name, photo_url, phone ),
+      booking_groups ( payment_method )
     `)
     .eq('student_id', studentId)
     .order('created_at', { ascending: false })
@@ -42,6 +47,10 @@ export async function getStudentBookings(studentId: string): Promise<StudentBook
       ? row.instructor_profiles[0]
       : row.instructor_profiles
 
+    const group = Array.isArray(row.booking_groups)
+      ? row.booking_groups[0]
+      : row.booking_groups
+
     return {
       id: row.id,
       status: row.status as StudentBooking['status'],
@@ -50,8 +59,11 @@ export async function getStudentBookings(studentId: string): Promise<StudentBook
       slot_minute: slot?.minute ?? 0,
       instructor_name: instructor?.full_name ?? 'Instrutor',
       instructor_photo: instructor?.photo_url ?? null,
+      instructor_phone: instructor?.phone ?? null,
       value: Number(row.value ?? 0),
       lesson_mode: (row.lesson_mode as StudentBooking['lesson_mode']) ?? null,
+      created_at: row.created_at ?? null,
+      payment_method: (group?.payment_method as StudentBooking['payment_method']) ?? null,
     }
   })
 }

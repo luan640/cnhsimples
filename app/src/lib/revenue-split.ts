@@ -9,6 +9,7 @@ export type RevenueSplitConfig = {
 }
 
 function normalizeRate(value: unknown, fallback = FALLBACK_PLATFORM_SPLIT_RATE) {
+  if (value == null) return fallback
   const rate = typeof value === 'number' ? value : Number(value)
   if (!Number.isFinite(rate) || rate < 0 || rate >= 1) {
     return fallback

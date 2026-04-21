@@ -11,7 +11,7 @@ type AuthRole = 'student' | 'instructor' | 'guest'
 
 function getAccountHref(role: AuthRole) {
   if (role === 'instructor') return '/painel'
-  if (role === 'student') return '/buscar'
+  if (role === 'student') return '/aluno'
   return '/login'
 }
 

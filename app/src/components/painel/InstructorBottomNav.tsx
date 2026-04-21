@@ -1,8 +1,8 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { LayoutDashboard, CalendarDays, BookOpen, Wallet, User } from 'lucide-react'
+import { useState } from 'react'
+import { usePathname, useRouter } from 'next/navigation'
+import { LayoutDashboard, CalendarDays, BookOpen, Wallet, User, Loader2 } from 'lucide-react'
 
 const NAV_ITEMS = [
   { href: '/painel', icon: LayoutDashboard, label: 'Painel' },
@@ -14,6 +14,14 @@ const NAV_ITEMS = [
 
 export function InstructorBottomNav() {
   const pathname = usePathname()
+  const router = useRouter()
+  const [pendingHref, setPendingHref] = useState<string | null>(null)
+
+  function navigateTo(href: string) {
+    if (href === pathname) return
+    setPendingHref(href)
+    router.push(href)
+  }
 
   return (
     <nav
@@ -25,17 +33,24 @@ export function InstructorBottomNav() {
       }}
     >
       {NAV_ITEMS.map(({ href, icon: Icon, label }) => {
-        const isActive = pathname === href
+        const isActive = pathname === href || pendingHref === href
+        const isPending = pendingHref === href && pathname !== href
         return (
-          <Link
+          <button
             key={href}
-            href={href}
-            className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-opacity"
-            style={{ color: isActive ? '#3ECF8E' : '#a1a1aa' }}
+            type="button"
+            onClick={() => navigateTo(href)}
+            disabled={Boolean(pendingHref && pendingHref !== href && pendingHref !== pathname)}
+            className="flex-1 flex flex-col items-center gap-1 py-2.5 transition-all disabled:opacity-100"
+            style={{
+              color: isActive ? '#3ECF8E' : '#a1a1aa',
+              background: isPending ? 'rgba(62,207,142,0.08)' : 'transparent',
+              transform: isPending ? 'translateY(-1px)' : 'translateY(0)',
+            }}
           >
-            <Icon size={22} />
+            {isPending ? <Loader2 size={22} className="animate-spin" /> : <Icon size={22} />}
             <span className="text-[10px] font-medium">{label}</span>
-          </Link>
+          </button>
         )
       })}
     </nav>

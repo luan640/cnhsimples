@@ -116,6 +116,13 @@ function buildIndividualPriceMap(
   return pricesByInstructor
 }
 
+function toRate(value: number | string | null | undefined, fallback: number) {
+  if (value == null) return fallback
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n) || n < 0 || n >= 1) return fallback
+  return n
+}
+
 function buildPlatformSplitMap(records: RawInstructorRecord[], defaultPlatformSplitRate: number) {
   const ratesByInstructor = new Map<string, number>()
 
@@ -123,7 +130,7 @@ function buildPlatformSplitMap(records: RawInstructorRecord[], defaultPlatformSp
     const id = record.id ?? record.user_id
     if (!id) continue
 
-    const customRate = toNumber(record.platform_split_rate, defaultPlatformSplitRate)
+    const customRate = toRate(record.platform_split_rate, defaultPlatformSplitRate)
     ratesByInstructor.set(id, customRate)
   }
 
@@ -147,7 +154,7 @@ function normalizeInstructor(
   const lessonCount = toNumber(record.lesson_count ?? record.lessons_count, 0)
   const studentCount = toNumber(record.student_count ?? record.students_count, 0)
   const individualPrices = individualPricesByInstructor.get(id) ?? {}
-  const platformSplitRate = toNumber(record.platform_split_rate, defaultPlatformSplitRate)
+  const platformSplitRate = toRate(record.platform_split_rate, defaultPlatformSplitRate)
   const fallbackHourlyRate = studentPriceFromInstructorAmount(
     toNumber(record.hourly_rate ?? record.price_per_hour, 0),
     platformSplitRate
@@ -225,7 +232,7 @@ export async function getInstructorSearchItems() {
       .eq('id', true)
       .maybeSingle()
 
-    const defaultPlatformSplitRate = toNumber(
+    const defaultPlatformSplitRate = toRate(
       platformSettingsData?.default_platform_split_rate,
       FALLBACK_PLATFORM_SPLIT_RATE
     )
