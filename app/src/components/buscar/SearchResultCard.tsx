@@ -157,6 +157,9 @@ export function SearchResultCard({ instructor }: Props) {
       <div className="mt-auto">
         {priceEntries.length > 0 ? (
           <div className="mb-3 space-y-1.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">
+              A partir de
+            </p>
             {priceEntries.map((entry) => (
               <div key={entry.label} className="flex items-baseline justify-between gap-3">
                 <span className="text-xs font-medium text-[#64748B]">{entry.label}</span>
@@ -169,8 +172,10 @@ export function SearchResultCard({ instructor }: Props) {
           </div>
         ) : (
           <div className="mb-3">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">
+              A partir de
+            </p>
             <span className="text-lg font-bold text-[#0284C7]">R$ {hourly_rate.toFixed(0)}</span>
-            <span className="text-xs text-[#64748B]">/aula</span>
           </div>
         )}
 

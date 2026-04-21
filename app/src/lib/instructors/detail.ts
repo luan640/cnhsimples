@@ -3,6 +3,7 @@ import { unstable_noStore as noStore } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { CNHCategory } from '@/types'
 import type { PickupRange } from '@/lib/instructors/services'
+import { getRevenueSplitConfig, studentPriceFromInstructorAmount } from '@/lib/revenue-split'
 
 export type { PickupRange }
 
@@ -47,6 +48,7 @@ export type PublicInstructorDetail = {
   accepts_night_driving: boolean
   accepts_parking_practice: boolean
   student_chooses_destination: boolean
+  starting_price: number | null
   services: PublicInstructorServiceOption[]
   available_slots: PublicInstructorAvailableSlot[]
 }
@@ -108,8 +110,10 @@ export async function getPublicInstructorDetail(
   const admin = createAdminClient()
   const startDate = formatDate(0)
   const endDate = formatDate(21)
+  const revenueSplitConfigPromise = getRevenueSplitConfig(profileId)
 
-  const [profileResult, servicesResult, slotsResult, bookingsResult] = await Promise.all([
+  const [profileResult, servicesResult, slotsResult, bookingsResult, revenueSplitConfig] =
+    await Promise.all([
     admin
       .from('instructor_profiles')
       .select(
@@ -142,6 +146,7 @@ export async function getPublicInstructorDetail(
       .select('id, student_id, status')
       .eq('instructor_id', profileId)
       .in('status', ['pending', 'confirmed', 'completed']),
+    revenueSplitConfigPromise,
   ])
 
   const profile = profileResult.data
@@ -151,9 +156,34 @@ export async function getPublicInstructorDetail(
   }
 
   const bookings = bookingsResult.data ?? []
+  const normalizedServices = (servicesResult.data ?? []).map((service) => ({
+    id: service.id,
+    service_type: (service.service_type === 'package' ? 'package' : 'individual') as
+      | 'individual'
+      | 'package',
+    title: service.title ?? '',
+    description: service.description ?? null,
+    category: toCategory(service.category),
+    lesson_count: Number(service.lesson_count ?? 1),
+    price: studentPriceFromInstructorAmount(
+      Number(service.price ?? 0),
+      revenueSplitConfig.platformSplitRate
+    ),
+    accepts_home_pickup: service.accepts_home_pickup ?? false,
+    pickup_ranges: (service.pickup_ranges as PickupRange[]) ?? [],
+    accepts_student_vehicle: service.accepts_student_vehicle ?? false,
+    provides_vehicle: service.provides_vehicle ?? true,
+  }))
   const uniqueStudents = new Set(
     bookings.map((booking) => booking.student_id).filter((studentId): studentId is string => Boolean(studentId))
   )
+  const startingPrice =
+    normalizedServices.length > 0
+      ? normalizedServices.reduce(
+          (lowest, service) => (service.price > 0 && service.price < lowest ? service.price : lowest),
+          Number.POSITIVE_INFINITY
+        )
+      : null
 
   return {
     id: profile.id,
@@ -174,19 +204,8 @@ export async function getPublicInstructorDetail(
     accepts_night_driving: profile.accepts_night_driving ?? false,
     accepts_parking_practice: profile.accepts_parking_practice ?? false,
     student_chooses_destination: profile.student_chooses_destination ?? false,
-    services: (servicesResult.data ?? []).map((service) => ({
-      id: service.id,
-      service_type: (service.service_type === 'package' ? 'package' : 'individual') as 'individual' | 'package',
-      title: service.title ?? '',
-      description: service.description ?? null,
-      category: toCategory(service.category),
-      lesson_count: Number(service.lesson_count ?? 1),
-      price: Number(service.price ?? 0),
-      accepts_home_pickup: service.accepts_home_pickup ?? false,
-      pickup_ranges: (service.pickup_ranges as PickupRange[]) ?? [],
-      accepts_student_vehicle: service.accepts_student_vehicle ?? false,
-      provides_vehicle: service.provides_vehicle ?? true,
-    })),
+    starting_price: startingPrice && Number.isFinite(startingPrice) ? startingPrice : null,
+    services: normalizedServices,
     available_slots: (slotsResult.data ?? []).map((slot) => ({
       id: slot.id,
       date: slot.date,

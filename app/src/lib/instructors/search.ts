@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js'
 
 import type { CNHCategory, InstructorCard } from '@/types'
+import { FALLBACK_PLATFORM_SPLIT_RATE, studentPriceFromInstructorAmount } from '@/lib/revenue-split'
 
 type InstructorSearchItem = InstructorCard & {
   lesson_goals: string[]
@@ -30,6 +31,7 @@ type RawInstructorRecord = {
   distance_km?: number | string | null
   bio?: string | null
   status?: string | null
+  platform_split_rate?: number | string | null
   accepts_highway?: boolean | null
   accepts_night_driving?: boolean | null
   accepts_parking_practice?: boolean | null
@@ -84,13 +86,20 @@ function toCategory(value?: string | null): 'A' | 'B' | 'AB' {
   return 'B'
 }
 
-function buildIndividualPriceMap(records: RawIndividualServiceRecord[]) {
+function buildIndividualPriceMap(
+  records: RawIndividualServiceRecord[],
+  platformSplitRateByInstructor: Map<string, number>,
+  defaultPlatformSplitRate: number
+) {
   const pricesByInstructor = new Map<string, Partial<Record<CNHCategory, number>>>()
 
   for (const record of records) {
     const instructorId = record.instructor_id ?? ''
     const category = record.category ? toCategory(record.category) : null
-    const price = toNumber(record.price, 0)
+    const basePrice = toNumber(record.price, 0)
+    const platformSplitRate =
+      platformSplitRateByInstructor.get(instructorId) ?? defaultPlatformSplitRate
+    const price = studentPriceFromInstructorAmount(basePrice, platformSplitRate)
 
     if (!instructorId || !category || price <= 0) {
       continue
@@ -107,9 +116,24 @@ function buildIndividualPriceMap(records: RawIndividualServiceRecord[]) {
   return pricesByInstructor
 }
 
+function buildPlatformSplitMap(records: RawInstructorRecord[], defaultPlatformSplitRate: number) {
+  const ratesByInstructor = new Map<string, number>()
+
+  for (const record of records) {
+    const id = record.id ?? record.user_id
+    if (!id) continue
+
+    const customRate = toNumber(record.platform_split_rate, defaultPlatformSplitRate)
+    ratesByInstructor.set(id, customRate)
+  }
+
+  return ratesByInstructor
+}
+
 function normalizeInstructor(
   record: RawInstructorRecord,
-  individualPricesByInstructor: Map<string, Partial<Record<CNHCategory, number>>>
+  individualPricesByInstructor: Map<string, Partial<Record<CNHCategory, number>>>,
+  defaultPlatformSplitRate: number
 ): InstructorSearchItem | null {
   const id = record.id ?? record.user_id
   const fullName = record.full_name ?? record.name
@@ -123,7 +147,11 @@ function normalizeInstructor(
   const lessonCount = toNumber(record.lesson_count ?? record.lessons_count, 0)
   const studentCount = toNumber(record.student_count ?? record.students_count, 0)
   const individualPrices = individualPricesByInstructor.get(id) ?? {}
-  const fallbackHourlyRate = toNumber(record.hourly_rate ?? record.price_per_hour, 0)
+  const platformSplitRate = toNumber(record.platform_split_rate, defaultPlatformSplitRate)
+  const fallbackHourlyRate = studentPriceFromInstructorAmount(
+    toNumber(record.hourly_rate ?? record.price_per_hour, 0),
+    platformSplitRate
+  )
   const hourlyRate =
     individualPrices.A ??
     individualPrices.B ??
@@ -191,12 +219,32 @@ export async function getInstructorSearchItems() {
       .order('sort_order')
       .order('created_at')
 
-    const individualPricesByInstructor = buildIndividualPriceMap(
-      (serviceData ?? []) as RawIndividualServiceRecord[]
+    const { data: platformSettingsData } = await supabase
+      .from('platform_settings')
+      .select('default_platform_split_rate')
+      .eq('id', true)
+      .maybeSingle()
+
+    const defaultPlatformSplitRate = toNumber(
+      platformSettingsData?.default_platform_split_rate,
+      FALLBACK_PLATFORM_SPLIT_RATE
+    )
+    const rawRecords = (data ?? []) as RawInstructorRecord[]
+    const platformSplitRateByInstructor = buildPlatformSplitMap(
+      rawRecords,
+      defaultPlatformSplitRate
     )
 
-    return (data ?? [])
-      .map((item) => normalizeInstructor(item as RawInstructorRecord, individualPricesByInstructor))
+    const individualPricesByInstructor = buildIndividualPriceMap(
+      (serviceData ?? []) as RawIndividualServiceRecord[],
+      platformSplitRateByInstructor,
+      defaultPlatformSplitRate
+    )
+
+    return rawRecords
+      .map((item) =>
+        normalizeInstructor(item, individualPricesByInstructor, defaultPlatformSplitRate)
+      )
       .filter((item): item is InstructorSearchItem => Boolean(item))
   }
 

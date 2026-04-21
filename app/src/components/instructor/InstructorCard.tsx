@@ -126,13 +126,15 @@ export function InstructorCard({ instructor }: Props) {
           </div>
 
           {/* price */}
-          <div className="text-right">
-            <span className="text-base font-bold text-[#0F172A]">
-              R$ {hourly_rate.toFixed(0)}
-            </span>
-            <span className="text-xs text-[#64748B]">/aula</span>
-          </div>
+        <div className="text-right">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-[#94A3B8]">
+            A partir de
+          </p>
+          <span className="text-base font-bold text-[#0F172A]">
+            R$ {hourly_rate.toFixed(0)}
+          </span>
         </div>
+      </div>
 
         {lesson_count > 0 && (
           <p className="text-[11px] text-[#94A3B8]">

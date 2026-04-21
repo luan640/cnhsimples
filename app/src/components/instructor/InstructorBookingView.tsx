@@ -227,6 +227,16 @@ function InstructorCard({ instructor }: { instructor: PublicInstructorDetail }) 
               {instructor.experience_years ?? 0}+ anos
             </span>
           </div>
+          {instructor.starting_price != null && (
+            <div className="mt-2">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">
+                A partir de
+              </p>
+              <p className="text-base font-bold text-[#0F172A]">
+                {fmt(instructor.starting_price)}
+              </p>
+            </div>
+          )}
         </div>
       </div>
       {prefs.length > 0 && (
