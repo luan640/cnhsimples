@@ -7,6 +7,11 @@ type InstructorSearchItem = InstructorCard & {
   lesson_goals: string[]
 }
 
+type CanonicalInstructorPricing = {
+  hourly_rate?: number | string | null
+  platform_split_rate?: number | string | null
+}
+
 type RawInstructorRecord = {
   id?: string
   user_id?: string
@@ -139,6 +144,7 @@ function buildPlatformSplitMap(records: RawInstructorRecord[], defaultPlatformSp
 
 function normalizeInstructor(
   record: RawInstructorRecord,
+  canonicalPricing: CanonicalInstructorPricing | null,
   individualPricesByInstructor: Map<string, Partial<Record<CNHCategory, number>>>,
   defaultPlatformSplitRate: number
 ): InstructorSearchItem | null {
@@ -154,9 +160,12 @@ function normalizeInstructor(
   const lessonCount = toNumber(record.lesson_count ?? record.lessons_count, 0)
   const studentCount = toNumber(record.student_count ?? record.students_count, 0)
   const individualPrices = individualPricesByInstructor.get(id) ?? {}
-  const platformSplitRate = toRate(record.platform_split_rate, defaultPlatformSplitRate)
+  const platformSplitRate = toRate(
+    canonicalPricing?.platform_split_rate ?? record.platform_split_rate,
+    defaultPlatformSplitRate
+  )
   const fallbackHourlyRate = studentPriceFromInstructorAmount(
-    toNumber(record.hourly_rate ?? record.price_per_hour, 0),
+    toNumber(canonicalPricing?.hourly_rate ?? record.hourly_rate ?? record.price_per_hour, 0),
     platformSplitRate
   )
   const hourlyRate =
@@ -237,8 +246,34 @@ export async function getInstructorSearchItems() {
       FALLBACK_PLATFORM_SPLIT_RATE
     )
     const rawRecords = (data ?? []) as RawInstructorRecord[]
+    const instructorIds = rawRecords
+      .map((record) => record.id ?? null)
+      .filter((id): id is string => Boolean(id))
+
+    const { data: canonicalPricingRows } =
+      instructorIds.length > 0
+        ? await supabase
+            .from('instructor_profiles')
+            .select('id, hourly_rate, platform_split_rate')
+            .in('id', instructorIds)
+        : { data: [] as { id: string; hourly_rate?: number | string | null; platform_split_rate?: number | string | null }[] }
+
+    const canonicalPricingMap = new Map<string, CanonicalInstructorPricing>(
+      (canonicalPricingRows ?? []).map((row) => [
+        row.id,
+        {
+          hourly_rate: row.hourly_rate,
+          platform_split_rate: row.platform_split_rate,
+        },
+      ])
+    )
+
     const platformSplitRateByInstructor = buildPlatformSplitMap(
-      rawRecords,
+      rawRecords.map((record) => ({
+        ...record,
+        platform_split_rate:
+          canonicalPricingMap.get(record.id ?? '')?.platform_split_rate ?? record.platform_split_rate,
+      })),
       defaultPlatformSplitRate
     )
 
@@ -250,7 +285,12 @@ export async function getInstructorSearchItems() {
 
     return rawRecords
       .map((item) =>
-        normalizeInstructor(item, individualPricesByInstructor, defaultPlatformSplitRate)
+        normalizeInstructor(
+          item,
+          canonicalPricingMap.get(item.id ?? '') ?? null,
+          individualPricesByInstructor,
+          defaultPlatformSplitRate
+        )
       )
       .filter((item): item is InstructorSearchItem => Boolean(item))
   }
