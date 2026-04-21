@@ -10,13 +10,14 @@ type AuthRole = 'student' | 'instructor'
 
 type AuthLoginFormProps = {
   role: AuthRole
+  nextPath?: string
 }
 
 function getRedirectPath(role: AuthRole) {
-  return role === 'student' ? '/buscar' : '/painel'
+  return role === 'student' ? '/aluno' : '/painel'
 }
 
-export function AuthLoginForm({ role }: AuthLoginFormProps) {
+export function AuthLoginForm({ role, nextPath }: AuthLoginFormProps) {
   const [showPassword, setShowPassword] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -34,6 +35,7 @@ export function AuthLoginForm({ role }: AuthLoginFormProps) {
   const switchHref = isStudent ? '/login/instrutor' : '/login/aluno'
   const switchLabel = isStudent ? 'Entrar como instrutor' : 'Entrar como aluno'
   const redirectPath = getRedirectPath(role)
+  const resolvedNextPath = nextPath && nextPath.startsWith('/') ? nextPath : redirectPath
 
   async function handleGoogleLogin() {
     setSubmitError('')
@@ -43,7 +45,9 @@ export function AuthLoginForm({ role }: AuthLoginFormProps) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}${redirectPath}`,
+        redirectTo: isStudent
+          ? `${window.location.origin}/login/aluno?oauth=return&next=${encodeURIComponent(resolvedNextPath)}`
+          : `${window.location.origin}${redirectPath}`,
       },
     })
 
@@ -73,7 +77,9 @@ export function AuthLoginForm({ role }: AuthLoginFormProps) {
 
     // Full page reload para garantir que os cookies de sessão sejam
     // enviados corretamente na próxima requisição ao servidor.
-    window.location.href = redirectPath
+    window.location.href = isStudent
+      ? `/login/aluno?next=${encodeURIComponent(resolvedNextPath)}`
+      : redirectPath
   }
 
   return (

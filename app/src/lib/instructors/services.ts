@@ -22,9 +22,6 @@ export type InstructorService = {
   accepts_home_pickup: boolean
   pickup_ranges: PickupRange[]
   accepts_student_vehicle: boolean
-  accepts_highway: boolean
-  accepts_night_driving: boolean
-  accepts_parking_practice: boolean
   provides_vehicle: boolean
   notes: string | null
   is_active: boolean
@@ -42,7 +39,7 @@ export async function getInstructorServices(profileId: string): Promise<Instruct
   const admin = createAdminClient()
   const { data } = await admin
     .from('instructor_services')
-    .select('id, category, service_type, lesson_count, price, accepts_home_pickup, pickup_ranges, accepts_student_vehicle, accepts_highway, accepts_night_driving, accepts_parking_practice, provides_vehicle, notes, is_active, sort_order')
+    .select('id, category, service_type, lesson_count, price, accepts_home_pickup, pickup_ranges, accepts_student_vehicle, provides_vehicle, notes, is_active, sort_order')
     .eq('instructor_id', profileId)
     .order('sort_order')
     .order('created_at')
@@ -56,9 +53,6 @@ export async function getInstructorServices(profileId: string): Promise<Instruct
     accepts_home_pickup: r.accepts_home_pickup ?? false,
     pickup_ranges: (r.pickup_ranges as PickupRange[]) ?? [],
     accepts_student_vehicle: r.accepts_student_vehicle ?? false,
-    accepts_highway: r.accepts_highway ?? false,
-    accepts_night_driving: r.accepts_night_driving ?? false,
-    accepts_parking_practice: r.accepts_parking_practice ?? false,
     provides_vehicle: r.provides_vehicle ?? true,
     notes: r.notes ?? null,
     is_active: r.is_active ?? true,

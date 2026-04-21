@@ -1,11 +1,12 @@
 'use client'
 
-import { useMemo, useState, useTransition } from 'react'
+import { useEffect, useMemo, useState, useTransition } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowLeft, Save } from 'lucide-react'
 
 import type { InstructorFullProfile } from '@/lib/instructors/perfil'
+import type { CepLookupResult } from '@/types'
 import {
   updateInstructorDocumentsAction,
   updateInstructorGeneralAction,
@@ -20,14 +21,6 @@ function getInitials(name: string) {
     .slice(0, 2)
     .map((part) => part[0]?.toUpperCase() ?? '')
     .join('')
-}
-
-function formatCpf(value: string) {
-  const digits = value.replace(/\D/g, '').slice(0, 11)
-  return digits
-    .replace(/^(\d{3})(\d)/, '$1.$2')
-    .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
-    .replace(/\.(\d{3})(\d)/, '.$1-$2')
 }
 
 function formatPhone(value: string) {
@@ -217,57 +210,19 @@ export function EditProfileForm({ profile }: { profile: InstructorFullProfile })
 }
 
 export function EditDocumentsForm({ profile }: { profile: InstructorFullProfile }) {
-  const [cpf, setCpf] = useState(profile.cpf ?? '')
-  const [birthDate, setBirthDate] = useState(profile.birth_date ?? '')
-  const [cnhNumber, setCnhNumber] = useState(profile.cnh_number ?? '')
-  const [cnhExpiresAt, setCnhExpiresAt] = useState(profile.cnh_expires_at ?? '')
-  const [detranCredentialNumber, setDetranCredentialNumber] = useState(
-    profile.detran_credential_number ?? ''
-  )
-  const [detranCredentialExpiresAt, setDetranCredentialExpiresAt] = useState(
-    profile.detran_credential_expires_at ?? ''
-  )
-  const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
-  const [pending, startTransition] = useTransition()
-
   return (
     <Shell
       title="Dados Cadastrais"
-      description="Edite CPF, CNH, credencial e datas de validade."
+      description="Consulte CPF, data de nascimento, CNH, credencial e respectivas validades."
     >
-      <form
-        onSubmit={(event) => {
-          event.preventDefault()
-          setError('')
-          setSuccess('')
-
-          const formData = new FormData()
-          formData.set('cpf', cpf)
-          formData.set('birthDate', birthDate)
-          formData.set('cnhNumber', cnhNumber)
-          formData.set('cnhExpiresAt', cnhExpiresAt)
-          formData.set('detranCredentialNumber', detranCredentialNumber)
-          formData.set('detranCredentialExpiresAt', detranCredentialExpiresAt)
-
-          startTransition(async () => {
-            const result = await updateInstructorDocumentsAction(formData)
-            if (!result.ok) {
-              setError(result.error ?? 'Falha ao atualizar dados cadastrais.')
-              return
-            }
-            setSuccess('Dados cadastrais atualizados com sucesso.')
-          })
-        }}
-        className="space-y-5"
-      >
+      <div className="space-y-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-[#111827]">CPF</label>
             <input
-              value={cpf}
-              onChange={(event) => setCpf(formatCpf(event.target.value))}
-              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-base text-[#111827] outline-none focus:border-[#60A5FA]"
+              value={profile.cpf ?? ''}
+              readOnly
+              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F3F4F6] px-4 text-base text-[#6B7280] outline-none"
             />
           </div>
 
@@ -275,18 +230,18 @@ export function EditDocumentsForm({ profile }: { profile: InstructorFullProfile 
             <label className="text-sm font-medium text-[#111827]">Data de nascimento</label>
             <input
               type="date"
-              value={birthDate}
-              onChange={(event) => setBirthDate(event.target.value)}
-              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-base text-[#111827] outline-none focus:border-[#60A5FA]"
+              value={profile.birth_date ?? ''}
+              disabled
+              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F3F4F6] px-4 text-base text-[#6B7280] outline-none disabled:cursor-not-allowed"
             />
           </div>
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-[#111827]">Numero da CNH</label>
             <input
-              value={cnhNumber}
-              onChange={(event) => setCnhNumber(event.target.value)}
-              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-base text-[#111827] outline-none focus:border-[#60A5FA]"
+              value={profile.cnh_number ?? ''}
+              readOnly
+              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F3F4F6] px-4 text-base text-[#6B7280] outline-none"
             />
           </div>
 
@@ -294,18 +249,18 @@ export function EditDocumentsForm({ profile }: { profile: InstructorFullProfile 
             <label className="text-sm font-medium text-[#111827]">Validade da CNH</label>
             <input
               type="date"
-              value={cnhExpiresAt}
-              onChange={(event) => setCnhExpiresAt(event.target.value)}
-              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-base text-[#111827] outline-none focus:border-[#60A5FA]"
+              value={profile.cnh_expires_at ?? ''}
+              disabled
+              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F3F4F6] px-4 text-base text-[#6B7280] outline-none disabled:cursor-not-allowed"
             />
           </div>
 
           <div className="space-y-1.5">
             <label className="text-sm font-medium text-[#111827]">Credencial DETRAN</label>
             <input
-              value={detranCredentialNumber}
-              onChange={(event) => setDetranCredentialNumber(event.target.value)}
-              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-base text-[#111827] outline-none focus:border-[#60A5FA]"
+              value={profile.detran_credential_number ?? ''}
+              readOnly
+              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F3F4F6] px-4 text-base text-[#6B7280] outline-none"
             />
           </div>
 
@@ -313,15 +268,17 @@ export function EditDocumentsForm({ profile }: { profile: InstructorFullProfile 
             <label className="text-sm font-medium text-[#111827]">Validade da credencial</label>
             <input
               type="date"
-              value={detranCredentialExpiresAt}
-              onChange={(event) => setDetranCredentialExpiresAt(event.target.value)}
-              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-base text-[#111827] outline-none focus:border-[#60A5FA]"
+              value={profile.detran_credential_expires_at ?? ''}
+              disabled
+              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F3F4F6] px-4 text-base text-[#6B7280] outline-none disabled:cursor-not-allowed"
             />
           </div>
         </div>
 
-        <SubmitRow pending={pending} success={success} error={error} />
-      </form>
+        <div className="rounded-[14px] border border-[#E5E7EB] bg-[#F8FAFC] px-4 py-3 text-sm text-[#64748B]">
+          Esses dados nao podem ser alterados pelo perfil.
+        </div>
+      </div>
     </Shell>
   )
 }
@@ -345,9 +302,46 @@ export function EditLocationForm({
   const [serviceRadiusKm, setServiceRadiusKm] = useState(
     profile.service_radius_km !== null ? String(profile.service_radius_km) : ''
   )
+  const [cepStatus, setCepStatus] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [isCepPending, startCepTransition] = useTransition()
   const [pending, startTransition] = useTransition()
+
+  useEffect(() => {
+    const digits = cep.replace(/\D/g, '')
+
+    if (digits.length !== 8) {
+      setCepStatus('')
+      return
+    }
+
+    startCepTransition(async () => {
+      setCepStatus('Buscando localizacao...')
+
+      try {
+        const response = await fetch(`/api/nominatim/cep?cep=${digits}`)
+
+        if (!response.ok) {
+          setCepStatus('Nao foi possivel localizar esse CEP.')
+          return
+        }
+
+        const result: CepLookupResult = await response.json()
+
+        setStreet(result.street || '')
+        setNeighborhood(result.neighborhood || '')
+        setCity(result.city || '')
+        setState(result.state || 'CE')
+        setLatitude(result.latitude || '')
+        setLongitude(result.longitude || '')
+        setCep(formatCep(result.cep || digits))
+        setCepStatus('Endereco preenchido automaticamente.')
+      } catch {
+        setCepStatus('Erro ao consultar o CEP.')
+      }
+    })
+  }, [cep, startCepTransition])
 
   return (
     <Shell
@@ -406,9 +400,21 @@ export function EditLocationForm({
             <label className="text-sm font-medium text-[#111827]">CEP</label>
             <input
               value={cep}
-              onChange={(event) => setCep(formatCep(event.target.value))}
+              onChange={(event) => {
+                const nextCep = formatCep(event.target.value)
+                setCep(nextCep)
+
+                if (nextCep.replace(/\D/g, '').length !== 8) {
+                  setCepStatus('')
+                }
+              }}
               className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-base text-[#111827] outline-none focus:border-[#60A5FA]"
             />
+            <p className="text-xs text-[#64748B]">
+              {isCepPending
+                ? 'Buscando CEP...'
+                : cepStatus || 'Informe um CEP valido para preencher o endereco.'}
+            </p>
           </div>
 
           <div className="space-y-1.5 md:col-span-2">
@@ -433,8 +439,8 @@ export function EditLocationForm({
             <label className="text-sm font-medium text-[#111827]">Bairro</label>
             <input
               value={neighborhood}
-              onChange={(event) => setNeighborhood(event.target.value)}
-              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-base text-[#111827] outline-none focus:border-[#60A5FA]"
+              readOnly
+              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F3F4F6] px-4 text-base text-[#6B7280] outline-none"
             />
           </div>
 
@@ -451,8 +457,8 @@ export function EditLocationForm({
             <label className="text-sm font-medium text-[#111827]">Estado</label>
             <input
               value={state}
-              onChange={(event) => setState(event.target.value.toUpperCase())}
-              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F9FAFB] px-4 text-base text-[#111827] outline-none focus:border-[#60A5FA]"
+              readOnly
+              className="min-h-12 w-full rounded-[16px] border border-[#E5E7EB] bg-[#F3F4F6] px-4 text-base text-[#6B7280] outline-none"
             />
           </div>
 

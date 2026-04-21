@@ -28,9 +28,6 @@ export type ServicePayload = {
   accepts_home_pickup: boolean
   pickup_ranges: { from_km: number; to_km: number; price: number }[]
   accepts_student_vehicle: boolean
-  accepts_highway: boolean
-  accepts_night_driving: boolean
-  accepts_parking_practice: boolean
   provides_vehicle: boolean
   notes: string
   is_active: boolean
@@ -60,9 +57,6 @@ export async function upsertServiceAction(
     accepts_home_pickup: payload.accepts_home_pickup,
     pickup_ranges: payload.accepts_home_pickup ? payload.pickup_ranges : [],
     accepts_student_vehicle: payload.accepts_student_vehicle,
-    accepts_highway: payload.accepts_highway,
-    accepts_night_driving: payload.accepts_night_driving,
-    accepts_parking_practice: payload.accepts_parking_practice,
     provides_vehicle: payload.provides_vehicle,
     notes: payload.notes.trim() || null,
     is_active: payload.is_active,

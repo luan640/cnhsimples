@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 
-import type { InstructorCard } from '@/types'
+import type { CNHCategory, InstructorCard } from '@/types'
 
 type InstructorSearchItem = InstructorCard & {
   lesson_goals: string[]
@@ -30,8 +30,18 @@ type RawInstructorRecord = {
   distance_km?: number | string | null
   bio?: string | null
   status?: string | null
+  accepts_highway?: boolean | null
+  accepts_night_driving?: boolean | null
+  accepts_parking_practice?: boolean | null
+  student_chooses_destination?: boolean | null
   lesson_goals?: string[] | null
   goals?: string[] | null
+}
+
+type RawIndividualServiceRecord = {
+  instructor_id?: string | null
+  category?: string | null
+  price?: number | string | null
 }
 
 const TABLE_CANDIDATES = [
@@ -74,7 +84,33 @@ function toCategory(value?: string | null): 'A' | 'B' | 'AB' {
   return 'B'
 }
 
-function normalizeInstructor(record: RawInstructorRecord): InstructorSearchItem | null {
+function buildIndividualPriceMap(records: RawIndividualServiceRecord[]) {
+  const pricesByInstructor = new Map<string, Partial<Record<CNHCategory, number>>>()
+
+  for (const record of records) {
+    const instructorId = record.instructor_id ?? ''
+    const category = record.category ? toCategory(record.category) : null
+    const price = toNumber(record.price, 0)
+
+    if (!instructorId || !category || price <= 0) {
+      continue
+    }
+
+    const current = pricesByInstructor.get(instructorId) ?? {}
+
+    if (current[category] == null) {
+      current[category] = price
+      pricesByInstructor.set(instructorId, current)
+    }
+  }
+
+  return pricesByInstructor
+}
+
+function normalizeInstructor(
+  record: RawInstructorRecord,
+  individualPricesByInstructor: Map<string, Partial<Record<CNHCategory, number>>>
+): InstructorSearchItem | null {
   const id = record.id ?? record.user_id
   const fullName = record.full_name ?? record.name
 
@@ -86,6 +122,13 @@ function normalizeInstructor(record: RawInstructorRecord): InstructorSearchItem 
   const reviewCount = toNumber(record.review_count ?? record.reviews_count, 0)
   const lessonCount = toNumber(record.lesson_count ?? record.lessons_count, 0)
   const studentCount = toNumber(record.student_count ?? record.students_count, 0)
+  const individualPrices = individualPricesByInstructor.get(id) ?? {}
+  const fallbackHourlyRate = toNumber(record.hourly_rate ?? record.price_per_hour, 0)
+  const hourlyRate =
+    individualPrices.A ??
+    individualPrices.B ??
+    individualPrices.AB ??
+    fallbackHourlyRate
 
   return {
     id,
@@ -94,7 +137,7 @@ function normalizeInstructor(record: RawInstructorRecord): InstructorSearchItem 
     category: toCategory(record.category ?? record.cnh_category),
     neighborhood: record.neighborhood ?? record.district ?? 'Fortaleza',
     city: record.city ?? 'Fortaleza',
-    hourly_rate: toNumber(record.hourly_rate ?? record.price_per_hour, 0),
+    hourly_rate: hourlyRate,
     rating,
     review_count: reviewCount,
     lesson_count: lessonCount,
@@ -104,6 +147,11 @@ function normalizeInstructor(record: RawInstructorRecord): InstructorSearchItem 
     is_new: reviewCount === 0 || lessonCount < 20,
     is_trending: lessonCount >= 5 && lessonCount < 40,
     bio: record.bio ?? null,
+    individual_prices: individualPrices,
+    accepts_highway: record.accepts_highway ?? false,
+    accepts_night_driving: record.accepts_night_driving ?? false,
+    accepts_parking_practice: record.accepts_parking_practice ?? false,
+    student_chooses_destination: record.student_chooses_destination ?? false,
     status:
       record.status === 'pending' ||
       record.status === 'docs_rejected' ||
@@ -135,8 +183,20 @@ export async function getInstructorSearchItems() {
       continue
     }
 
+    const { data: serviceData } = await supabase
+      .from('instructor_services')
+      .select('instructor_id, category, price')
+      .eq('is_active', true)
+      .eq('service_type', 'individual')
+      .order('sort_order')
+      .order('created_at')
+
+    const individualPricesByInstructor = buildIndividualPriceMap(
+      (serviceData ?? []) as RawIndividualServiceRecord[]
+    )
+
     return (data ?? [])
-      .map((item) => normalizeInstructor(item as RawInstructorRecord))
+      .map((item) => normalizeInstructor(item as RawInstructorRecord, individualPricesByInstructor))
       .filter((item): item is InstructorSearchItem => Boolean(item))
   }
 

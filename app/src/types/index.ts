@@ -10,7 +10,7 @@ export type InstructorStatus =
 
 export type CNHCategory = 'A' | 'B' | 'AB'
 
-export type SlotStatus = 'available' | 'booked' | 'completed' | 'blocked'
+export type SlotStatus = 'available' | 'reserved' | 'booked' | 'completed' | 'blocked'
 
 export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
 
@@ -109,13 +109,34 @@ export interface Booking {
   id: string
   student_id: string
   instructor_id: string
+  booking_group_id?: string | null
+  service_id?: string | null
   slot_id: string
   value: number
   platform_amount: number
   instructor_amount: number
   status: BookingStatus
   payment_id: string | null
+  lesson_mode?: 'meeting' | 'pickup'
   created_at: string
+}
+
+export interface BookingGroup {
+  id: string
+  student_id: string
+  instructor_id: string
+  service_id: string | null
+  lesson_mode: 'meeting' | 'pickup'
+  payment_method: 'pix' | 'card' | 'mercado_pago'
+  total_lessons: number
+  total_amount: number
+  platform_amount: number
+  instructor_amount: number
+  status: 'pending' | 'awaiting_payment' | 'paid' | 'cancelled' | 'expired'
+  notes?: string | null
+  expires_at?: string | null
+  created_at: string
+  updated_at?: string
 }
 
 export interface Wallet {
@@ -175,6 +196,11 @@ export interface InstructorCard {
   is_new: boolean
   is_trending: boolean
   bio: string | null
+  individual_prices: Partial<Record<CNHCategory, number>>
+  accepts_highway: boolean
+  accepts_night_driving: boolean
+  accepts_parking_practice: boolean
+  student_chooses_destination: boolean
   status: InstructorStatus
 }
 

@@ -68,7 +68,7 @@ export type AgendaSlot = {
   hour: number
   minute: number
   slot_duration_minutes: number
-  status: 'available' | 'booked' | 'completed' | 'blocked'
+  status: 'available' | 'reserved' | 'booked' | 'completed' | 'blocked'
   booking: {
     id: string
     status: string

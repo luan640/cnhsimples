@@ -27,6 +27,10 @@ type InstructorSignupPayload = {
   latitude: number | null
   longitude: number | null
   serviceRadiusKm: number
+  acceptsHighway?: boolean
+  acceptsNightDriving?: boolean
+  acceptsParkingPractice?: boolean
+  studentChoosesDestination?: boolean
   pixKeyType: string | null
   pixKey: string | null
 }
@@ -77,6 +81,10 @@ function buildMetadata(payload: InstructorSignupPayload) {
     latitude: payload.latitude,
     longitude: payload.longitude,
     service_radius_km: payload.serviceRadiusKm,
+    accepts_highway: payload.acceptsHighway ?? false,
+    accepts_night_driving: payload.acceptsNightDriving ?? false,
+    accepts_parking_practice: payload.acceptsParkingPractice ?? false,
+    student_chooses_destination: payload.studentChoosesDestination ?? false,
     pix_key_type: payload.pixKeyType,
     pix_key: payload.pixKey,
     status: 'pending',
@@ -108,6 +116,10 @@ function buildProfilePayload(payload: InstructorSignupPayload) {
     latitude: payload.latitude,
     longitude: payload.longitude,
     service_radius_km: payload.serviceRadiusKm,
+    accepts_highway: payload.acceptsHighway ?? false,
+    accepts_night_driving: payload.acceptsNightDriving ?? false,
+    accepts_parking_practice: payload.acceptsParkingPractice ?? false,
+    student_chooses_destination: payload.studentChoosesDestination ?? false,
     pix_key_type: payload.pixKeyType,
     pix_key: payload.pixKey,
     status: 'pending',

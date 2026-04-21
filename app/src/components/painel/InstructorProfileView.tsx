@@ -3,9 +3,10 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { Bell, ChevronRight, CircleHelp, IdCard, LockKeyhole, LogOut, MapPin, ShieldCheck, UserRound } from 'lucide-react'
+import { useState, useTransition } from 'react'
+import { ChevronRight, CircleHelp, IdCard, LockKeyhole, LogOut, MapPin, ShieldCheck, UserRound } from 'lucide-react'
 
+import { updateInstructorPreferencesAction } from '@/app/perfil/instrutor/actions'
 import { createClient } from '@/lib/supabase/client'
 import type { InstructorFullProfile } from '@/lib/instructors/perfil'
 
@@ -85,6 +86,22 @@ function SettingsCard({ children }: { children: React.ReactNode }) {
   )
 }
 
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (value: boolean) => void }) {
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(!checked)}
+      className="relative h-6 w-10 shrink-0 rounded-full transition-colors"
+      style={{ background: checked ? '#3ECF8E' : '#CBD5E1' }}
+    >
+      <span
+        className="absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all"
+        style={{ left: checked ? '1.25rem' : '0.125rem' }}
+      />
+    </button>
+  )
+}
+
 function RowLink({
   href,
   icon: Icon,
@@ -130,16 +147,75 @@ function RowLink({
 
 export function InstructorProfileView({ profile, email }: InstructorProfileViewProps) {
   const router = useRouter()
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true)
+  const [preferences, setPreferences] = useState({
+    acceptsHighway: profile.accepts_highway,
+    acceptsNightDriving: profile.accepts_night_driving,
+    acceptsParkingPractice: profile.accepts_parking_practice,
+    studentChoosesDestination: profile.student_chooses_destination,
+  })
+  const [preferenceError, setPreferenceError] = useState('')
+  const [isSavingPreferences, startPreferenceTransition] = useTransition()
   const avatarFallback = getInitials(profile.full_name || 'Instrutor')
   const experienceLabel = profile.experience_years
     ? `${profile.experience_years} anos de experiencia`
     : 'Experiencia nao informada'
 
+  const preferenceItems = [
+    {
+      key: 'acceptsHighway' as const,
+      label: 'Aceito aulas em rodovias',
+      description: 'Permite pratica em vias de alta velocidade.',
+    },
+    {
+      key: 'acceptsNightDriving' as const,
+      label: 'Aceito aulas noturnas',
+      description: 'Disponivel para aulas em horario noturno.',
+    },
+    {
+      key: 'acceptsParkingPractice' as const,
+      label: 'Aceito pratica de estacionamento',
+      description: 'Inclui baliza, garagem e outras manobras.',
+    },
+    {
+      key: 'studentChoosesDestination' as const,
+      label: 'Aluno escolhe para onde ir',
+      description: 'O aluno pode definir o trajeto da aula.',
+    },
+  ]
+
   async function handleLogout() {
     const supabase = createClient()
     await supabase.auth.signOut()
     router.push('/login')
+  }
+
+  function handlePreferenceToggle(key: keyof typeof preferences) {
+    const previousPreferences = preferences
+    const nextPreferences = {
+      ...preferences,
+      [key]: !preferences[key],
+    }
+
+    setPreferences(nextPreferences)
+    setPreferenceError('')
+
+    startPreferenceTransition(async () => {
+      const formData = new FormData()
+      formData.set('acceptsHighway', String(nextPreferences.acceptsHighway))
+      formData.set('acceptsNightDriving', String(nextPreferences.acceptsNightDriving))
+      formData.set('acceptsParkingPractice', String(nextPreferences.acceptsParkingPractice))
+      formData.set('studentChoosesDestination', String(nextPreferences.studentChoosesDestination))
+
+      const result = await updateInstructorPreferencesAction(formData)
+
+      if (!result.ok) {
+        setPreferences(previousPreferences)
+        setPreferenceError(result.error ?? 'Falha ao atualizar preferencias.')
+        return
+      }
+
+      router.refresh()
+    })
   }
 
   return (
@@ -218,33 +294,31 @@ export function InstructorProfileView({ profile, email }: InstructorProfileViewP
           <div className="space-y-3">
             <SectionTitle title="Preferences" />
             <SettingsCard>
-              <div className="flex items-center gap-3 px-4 py-4 sm:px-5">
-                <div
-                  className="flex h-11 w-11 shrink-0 items-center justify-center rounded-[16px]"
-                  style={{ background: '#DBEAFE', color: '#2563EB' }}
-                >
-                  <Bell size={18} />
-                </div>
+              <div className="space-y-2.5 px-4 py-4 sm:px-5">
+                {preferenceItems.map((item) => {
+                  const active = preferences[item.key]
 
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-[#111827]">Notification</p>
-                  <p className="mt-1 text-xs leading-5 text-[#94A3B8]">
-                    Receber atualizacoes importantes da conta.
-                  </p>
-                </div>
+                  return (
+                    <div key={item.key} className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm text-[#0F172A]">{item.label}</p>
+                        <p className="text-[11px] text-[#94A3B8]">{item.description}</p>
+                      </div>
+                      <div className="shrink-0">
+                        <Toggle
+                          checked={active}
+                          onChange={() => handlePreferenceToggle(item.key)}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
 
-                <button
-                  type="button"
-                  aria-pressed={notificationsEnabled}
-                  onClick={() => setNotificationsEnabled((value) => !value)}
-                  className="relative h-7 w-12 rounded-full transition-colors"
-                  style={{ background: notificationsEnabled ? '#2563EB' : '#CBD5E1' }}
-                >
-                  <span
-                    className="absolute top-1 h-5 w-5 rounded-full bg-white shadow-sm transition-all"
-                    style={{ left: notificationsEnabled ? '1.5rem' : '0.25rem' }}
-                  />
-                </button>
+                {preferenceError ? (
+                  <div className="rounded-[14px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]">
+                    {preferenceError}
+                  </div>
+                ) : null}
               </div>
 
               <div className="mx-4 h-px bg-[#EEF2F7]" />

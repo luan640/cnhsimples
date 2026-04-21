@@ -35,7 +35,7 @@ async function getCurrentInstructorContext() {
   const admin = createAdminClient()
   const { data: profile, error } = await admin
     .from('instructor_profiles')
-    .select('user_id, photo_url')
+    .select('user_id, photo_url, cnh_number, detran_credential_number, accepts_highway, accepts_night_driving, accepts_parking_practice, student_chooses_destination')
     .eq('user_id', user.id)
     .maybeSingle()
 
@@ -148,62 +148,8 @@ export async function updateInstructorGeneralAction(formData: FormData) {
   }
 }
 
-export async function updateInstructorDocumentsAction(formData: FormData) {
-  try {
-    const { user, admin } = await getCurrentInstructorContext()
-
-    const cpf = String(formData.get('cpf') ?? '').replace(/\D/g, '')
-    const birthDate = String(formData.get('birthDate') ?? '').trim()
-    const cnhNumber = String(formData.get('cnhNumber') ?? '').trim()
-    const cnhExpiresAt = String(formData.get('cnhExpiresAt') ?? '').trim()
-    const detranCredentialNumber = String(formData.get('detranCredentialNumber') ?? '').trim()
-    const detranCredentialExpiresAt = String(formData.get('detranCredentialExpiresAt') ?? '').trim()
-
-    if (!cpf || cpf.length !== 11) {
-      return { ok: false, error: 'CPF invalido.' }
-    }
-
-    if (!birthDate || !cnhNumber || !cnhExpiresAt || !detranCredentialNumber || !detranCredentialExpiresAt) {
-      return { ok: false, error: 'Preencha todos os campos obrigatorios.' }
-    }
-
-    const { error: dbError } = await admin
-      .from('instructor_profiles')
-      .update({
-        cpf,
-        birth_date: birthDate,
-        cnh_number: cnhNumber,
-        cnh_expires_at: cnhExpiresAt,
-        detran_credential_number: detranCredentialNumber,
-        detran_credential_expires_at: detranCredentialExpiresAt,
-      })
-      .eq('user_id', user.id)
-
-    if (dbError) {
-      return { ok: false, error: dbError.message }
-    }
-
-    const { error: authError } = await admin.auth.admin.updateUserById(user.id, {
-      user_metadata: {
-        ...user.user_metadata,
-        cpf,
-        birth_date: birthDate,
-        cnh_number: cnhNumber,
-        cnh_expires_at: cnhExpiresAt,
-        detran_credential_number: detranCredentialNumber,
-        detran_credential_expires_at: detranCredentialExpiresAt,
-      },
-    })
-
-    if (authError) {
-      return { ok: false, error: authError.message }
-    }
-
-    revalidateInstructorProfilePaths()
-    return { ok: true }
-  } catch (error) {
-    return { ok: false, error: error instanceof Error ? error.message : 'Falha ao atualizar documentos.' }
-  }
+export async function updateInstructorDocumentsAction(_formData: FormData) {
+  return { ok: false, error: 'Dados cadastrais nao podem ser alterados pelo perfil.' }
 }
 
 export async function updateInstructorLocationAction(formData: FormData) {
@@ -281,5 +227,49 @@ export async function updateInstructorLocationAction(formData: FormData) {
     return { ok: true }
   } catch (error) {
     return { ok: false, error: error instanceof Error ? error.message : 'Falha ao atualizar localizacao.' }
+  }
+}
+
+export async function updateInstructorPreferencesAction(formData: FormData) {
+  try {
+    const { user, admin } = await getCurrentInstructorContext()
+
+    const acceptsHighway = formData.get('acceptsHighway') === 'true'
+    const acceptsNightDriving = formData.get('acceptsNightDriving') === 'true'
+    const acceptsParkingPractice = formData.get('acceptsParkingPractice') === 'true'
+    const studentChoosesDestination = formData.get('studentChoosesDestination') === 'true'
+
+    const { error: dbError } = await admin
+      .from('instructor_profiles')
+      .update({
+        accepts_highway: acceptsHighway,
+        accepts_night_driving: acceptsNightDriving,
+        accepts_parking_practice: acceptsParkingPractice,
+        student_chooses_destination: studentChoosesDestination,
+      })
+      .eq('user_id', user.id)
+
+    if (dbError) {
+      return { ok: false, error: dbError.message }
+    }
+
+    const { error: authError } = await admin.auth.admin.updateUserById(user.id, {
+      user_metadata: {
+        ...user.user_metadata,
+        accepts_highway: acceptsHighway,
+        accepts_night_driving: acceptsNightDriving,
+        accepts_parking_practice: acceptsParkingPractice,
+        student_chooses_destination: studentChoosesDestination,
+      },
+    })
+
+    if (authError) {
+      return { ok: false, error: authError.message }
+    }
+
+    revalidateInstructorProfilePaths()
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, error: error instanceof Error ? error.message : 'Falha ao atualizar preferencias.' }
   }
 }

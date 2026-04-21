@@ -16,6 +16,7 @@ async function getInstructorProfileId(): Promise<string | null> {
     .eq('user_id', user.id)
     .maybeSingle()
 
+
   return data?.id ?? null
 }
 
@@ -79,7 +80,7 @@ export async function deleteSlotAction(slotId: string): Promise<{ error: string 
     .maybeSingle()
 
   if (!slot || slot.instructor_id !== profileId) return { error: 'Slot não encontrado.' }
-  if (slot.status === 'booked') return { error: 'Não é possível remover um slot com agendamento.' }
+  if (slot.status === 'reserved' || slot.status === 'booked') return { error: 'Não é possível remover um slot com agendamento.' }
 
   const { error } = await admin.from('availability_slots').delete().eq('id', slotId)
   if (error) return { error: error.message }
@@ -104,7 +105,7 @@ export async function toggleSlotBlockAction(
     .maybeSingle()
 
   if (!slot || slot.instructor_id !== profileId) return { error: 'Slot não encontrado.' }
-  if (slot.status === 'booked') return { error: 'Não é possível bloquear um slot com agendamento.' }
+  if (slot.status === 'reserved' || slot.status === 'booked') return { error: 'Não é possível bloquear um slot com agendamento.' }
 
   const newStatus = block ? 'blocked' : 'available'
   const { error } = await admin
@@ -275,3 +276,5 @@ export async function saveScheduleRulesAction(
   revalidatePath('/agenda')
   return { error: null }
 }
+
+

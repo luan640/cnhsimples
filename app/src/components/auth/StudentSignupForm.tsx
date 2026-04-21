@@ -28,6 +28,7 @@ type FormState = {
   birthDate: string
   photoUrl: string
   cep: string
+  complement: string
   neighborhood: string
   city: string
   latitude: string
@@ -88,6 +89,7 @@ const EMPTY_FORM: FormState = {
   birthDate: '',
   photoUrl: '',
   cep: '',
+  complement: '',
   neighborhood: '',
   city: '',
   latitude: '',
@@ -158,6 +160,10 @@ export function StudentSignupForm() {
   const initialDraft = getDraft()
   const router = useRouter()
   const searchParams = useSearchParams()
+  const nextPath = (() => {
+    const next = searchParams.get('next')
+    return next && next.startsWith('/') ? next : '/aluno'
+  })()
   const oauthHandledRef = useRef(false)
   const [step, setStep] = useState<1 | 2>(initialDraft?.step ?? 1)
   const [accountMethod, setAccountMethod] = useState<AccountMethod>(
@@ -222,6 +228,7 @@ export function StudentSignupForm() {
       phone: form.phone,
       photoUrl: form.photoUrl.trim(),
       cep: form.cep,
+      complement: form.complement.trim(),
       neighborhood: form.neighborhood.trim(),
       city: form.city.trim(),
       latitude: form.latitude ? Number(form.latitude) : null,
@@ -248,7 +255,7 @@ export function StudentSignupForm() {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/cadastro/aluno?oauth=return`,
+        redirectTo: `${window.location.origin}/cadastro/aluno?oauth=return&next=${encodeURIComponent(nextPath)}`,
       },
     })
 
@@ -304,7 +311,7 @@ export function StudentSignupForm() {
         )
       } else {
         setSubmitSuccess('Cadastro concluido. Redirecionando...')
-        router.push('/buscar')
+        router.push(nextPath)
       }
     } catch {
       setSubmitError('Erro inesperado ao criar a conta.')
@@ -387,7 +394,7 @@ export function StudentSignupForm() {
         setSubmitSuccess('Gmail autenticado. Agora complete seu perfil para finalizar o cadastro.')
         setSubmitError('')
         clearDraft()
-        router.replace('/cadastro/aluno')
+        router.replace(`/cadastro/aluno?next=${encodeURIComponent(nextPath)}`)
       })
       .catch(() => {
         setSubmitError('Erro ao validar a sessao do Gmail.')
@@ -395,7 +402,7 @@ export function StudentSignupForm() {
       .finally(() => {
         setIsGoogleLoading(false)
       })
-  }, [router, searchParams])
+  }, [nextPath, router, searchParams])
 
   useEffect(() => {
     if (accountMethod !== 'google') {
@@ -448,6 +455,8 @@ export function StudentSignupForm() {
 
   const stepTwoComplete =
     form.cep.replace(/\D/g, '').length === 8 &&
+    Boolean(form.latitude) &&
+    Boolean(form.longitude) &&
     Boolean(form.neighborhood.trim()) &&
     Boolean(form.city.trim()) &&
     form.lessonGoals.length > 0 &&
@@ -477,17 +486,6 @@ export function StudentSignupForm() {
           >
             Ir para o login
           </Link>
-          <button
-            type="button"
-            onClick={() => {
-              setSubmitSuccess('')
-              setStep(1)
-              setForm(EMPTY_FORM)
-            }}
-            className="inline-flex min-h-11 items-center justify-center rounded-[8px] border border-[#E2E8F0] px-4 text-sm font-medium text-[#475569] transition-colors hover:bg-[#F8FAFC]"
-          >
-            Cadastrar outro aluno
-          </button>
         </div>
       </div>
     )
@@ -711,19 +709,6 @@ export function StudentSignupForm() {
               />
             </div>
 
-            <div className="space-y-1.5 md:col-span-2">
-              <label htmlFor="photo-url" className="text-sm font-medium text-[#0F172A]">
-                Foto do perfil
-              </label>
-              <input
-                id="photo-url"
-                type="url"
-                value={form.photoUrl}
-                onChange={(event) => updateField('photoUrl', event.target.value)}
-                placeholder="Cole a URL da sua foto ou use a foto trazida do Google"
-                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#3ECF8E]"
-              />
-            </div>
           </section>
 
           <div className="flex flex-col-reverse gap-3 border-t border-[#E2E8F0] pt-5 md:flex-row md:items-center md:justify-between">
@@ -735,7 +720,7 @@ export function StudentSignupForm() {
             </div>
             <button
               type="button"
-              disabled={!stepOneComplete}
+              disabled={accountMethod === 'google' && !googleConnected ? false : !stepOneComplete}
               onClick={() => {
                 if (accountMethod === 'google' && !googleConnected) {
                   void startGoogleAuth()
@@ -757,7 +742,7 @@ export function StudentSignupForm() {
           <section className="grid gap-4 md:grid-cols-[1fr_1fr]">
             <div className="space-y-1.5">
               <label htmlFor="cep" className="text-sm font-medium text-[#0F172A]">
-                CEP
+                CEP <span className="text-[#EF4444]">*</span>
               </label>
               <input
                 id="cep"
@@ -775,8 +760,21 @@ export function StudentSignupForm() {
                 className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#3ECF8E]"
               />
               <p className="text-xs text-[#64748B]">
-                O bairro e a cidade serao preenchidos automaticamente via Nominatim.
+                Obrigatorio. O bairro, cidade e coordenadas sao preenchidos automaticamente.
               </p>
+            </div>
+
+            <div className="space-y-1.5">
+              <label htmlFor="complement" className="text-sm font-medium text-[#0F172A]">
+                Complemento
+              </label>
+              <input
+                id="complement"
+                value={form.complement}
+                onChange={(event) => updateField('complement', event.target.value)}
+                placeholder="Apto, bloco, casa..."
+                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#3ECF8E]"
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -805,17 +803,31 @@ export function StudentSignupForm() {
               />
             </div>
 
-            <div className="rounded-[14px] bg-[#F8FAFC] p-4">
-              <div className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-[#0F172A]">
-                <MapPin size={16} className="text-[#3ECF8E]" />
-                Localizacao calculada
+            <div
+              className="rounded-[14px] p-4"
+              style={{
+                background: form.latitude && form.longitude ? '#F0FDF4' : '#FFF7ED',
+                border: `1px solid ${form.latitude && form.longitude ? '#BBF7D0' : '#FED7AA'}`,
+              }}
+            >
+              <div
+                className="mb-2 inline-flex items-center gap-2 text-sm font-semibold"
+                style={{ color: form.latitude && form.longitude ? '#166534' : '#9A3412' }}
+              >
+                <MapPin size={16} />
+                {form.latitude && form.longitude ? 'Localizacao confirmada' : 'Localizacao pendente'}
               </div>
-              <div className="text-sm text-[#64748B]">
-                <div>Latitude: {form.latitude || '-'}</div>
-                <div>Longitude: {form.longitude || '-'}</div>
-                <div className="mt-2">
-                  {isCepPending ? 'Buscando CEP...' : cepStatus || 'Informe um CEP valido.'}
-                </div>
+              <div className="text-sm" style={{ color: form.latitude && form.longitude ? '#166534' : '#9A3412' }}>
+                {isCepPending ? (
+                  <p>Buscando localizacao...</p>
+                ) : form.latitude && form.longitude ? (
+                  <>
+                    <p>Lat: {Number(form.latitude).toFixed(5)}</p>
+                    <p>Lon: {Number(form.longitude).toFixed(5)}</p>
+                  </>
+                ) : (
+                  <p>{cepStatus || 'Informe um CEP valido para confirmar sua localizacao.'}</p>
+                )}
               </div>
             </div>
           </section>

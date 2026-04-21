@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Star, MapPin, Trophy, Users } from 'lucide-react'
+
 import type { InstructorCard as InstructorCardType } from '@/types'
 
 interface Props {
@@ -9,26 +10,55 @@ interface Props {
 
 export function SearchResultCard({ instructor }: Props) {
   const {
-    id, full_name, photo_url, category, neighborhood,
-    hourly_rate, rating, review_count, lesson_count, student_count,
-    distance_km, is_super_instructor, is_new, is_trending, bio,
+    id,
+    full_name,
+    photo_url,
+    category,
+    neighborhood,
+    hourly_rate,
+    rating,
+    review_count,
+    lesson_count,
+    student_count,
+    distance_km,
+    is_super_instructor,
+    is_new,
+    is_trending,
+    bio,
+    individual_prices,
+    accepts_highway,
+    accepts_night_driving,
+    accepts_parking_practice,
+    student_chooses_destination,
   } = instructor
 
   const initials = full_name
     .split(' ')
     .slice(0, 2)
-    .map(n => n[0])
+    .map((name) => name[0])
     .join('')
     .toUpperCase()
 
+  const preferences = [
+    accepts_highway ? 'Aulas em rodovias' : null,
+    accepts_night_driving ? 'Aulas noturnas' : null,
+    accepts_parking_practice ? 'Pratica de estacionamento' : null,
+    student_chooses_destination ? 'Aluno escolhe o trajeto' : null,
+  ].filter((value): value is string => Boolean(value))
+
+  const priceEntries = ([
+    individual_prices.A != null ? { label: 'Cat. A', price: individual_prices.A } : null,
+    individual_prices.B != null ? { label: 'Cat. B', price: individual_prices.B } : null,
+    individual_prices.AB != null ? { label: 'Cat. A+B', price: individual_prices.AB } : null,
+  ]).filter((value): value is { label: string; price: number } => Boolean(value))
+
   return (
     <div
-      className="bg-white rounded-[12px] border border-[#E2E8F0] p-4 flex flex-col hover:border-[#3ECF8E] transition-all hover:shadow-lg"
+      className="flex flex-col rounded-[12px] border border-[#E2E8F0] bg-white p-4 transition-all hover:border-[#3ECF8E] hover:shadow-lg"
       style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
     >
-      {/* ── header: avatar + info ── */}
-      <div className="flex items-start gap-3 mb-3">
-        <div className="relative w-16 h-16 rounded-full overflow-hidden shrink-0 bg-[#F1F5F9]">
+      <div className="mb-3 flex items-start gap-3">
+        <div className="relative h-16 w-16 shrink-0 overflow-hidden rounded-full bg-[#F1F5F9]">
           {photo_url ? (
             <Image
               src={photo_url}
@@ -38,59 +68,82 @@ export function SearchResultCard({ instructor }: Props) {
               sizes="64px"
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-base font-bold text-[#94A3B8]">
+            <div className="flex h-full w-full items-center justify-center text-base font-bold text-[#94A3B8]">
               {initials}
             </div>
           )}
         </div>
 
-        <div className="flex-1 min-w-0">
-          <div className="flex items-start justify-between gap-2 mb-0.5">
-            <h3 className="font-semibold text-[#0F172A] text-sm leading-snug">{full_name}</h3>
-            <div className="flex items-center gap-1 shrink-0">
+        <div className="min-w-0 flex-1">
+          <div className="mb-0.5 flex items-start justify-between gap-2">
+            <h3 className="text-sm font-semibold leading-snug text-[#0F172A]">{full_name}</h3>
+            <div className="flex shrink-0 items-center gap-1">
               <Star size={13} fill="#F59E0B" className="text-[#F59E0B]" />
               <span className="text-sm font-semibold text-[#0F172A]">{rating.toFixed(1)}</span>
               <span className="text-xs text-[#94A3B8]">({review_count})</span>
             </div>
           </div>
 
-          <p className="text-xs text-[#64748B]">Categoria {category} · {neighborhood}</p>
+          <p className="text-xs text-[#64748B]">
+            Categoria {category} · {neighborhood}
+          </p>
 
-          <div className="flex items-center justify-between mt-1.5 flex-wrap gap-1">
-            {distance_km !== undefined && (
+          <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1">
+            {distance_km !== undefined ? (
               <div className="flex items-center gap-1 text-xs text-[#64748B]">
                 <MapPin size={11} />
-                {distance_km.toFixed(1)} km de você
+                {distance_km.toFixed(1)} km de voce
               </div>
-            )}
-            <div className="flex gap-1 flex-wrap">
-              {is_super_instructor && (
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold" style={{ background: '#D1FAE5', color: '#065F46' }}>
+            ) : null}
+
+            <div className="flex flex-wrap gap-1">
+              {is_super_instructor ? (
+                <span
+                  className="rounded px-2 py-0.5 text-[11px] font-semibold"
+                  style={{ background: '#D1FAE5', color: '#065F46' }}
+                >
                   Super Instrutor
                 </span>
-              )}
-              {is_trending && (
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold" style={{ background: '#E0F2FE', color: '#0369A1' }}>
+              ) : null}
+              {is_trending ? (
+                <span
+                  className="rounded px-2 py-0.5 text-[11px] font-semibold"
+                  style={{ background: '#E0F2FE', color: '#0369A1' }}
+                >
                   Em Alta
                 </span>
-              )}
-              {is_new && (
-                <span className="px-2 py-0.5 rounded text-[11px] font-semibold" style={{ background: '#FEF3C7', color: '#92400E' }}>
+              ) : null}
+              {is_new ? (
+                <span
+                  className="rounded px-2 py-0.5 text-[11px] font-semibold"
+                  style={{ background: '#FEF3C7', color: '#92400E' }}
+                >
                   Novo
                 </span>
-              )}
+              ) : null}
             </div>
           </div>
         </div>
       </div>
 
-      {/* ── bio ── */}
-      {bio && (
-        <p className="text-sm text-[#475569] leading-relaxed line-clamp-2 mb-3">{bio}</p>
-      )}
+      {bio ? (
+        <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-[#475569]">{bio}</p>
+      ) : null}
 
-      {/* ── stats ── */}
-      <div className="flex items-center gap-4 text-xs text-[#64748B] mb-4">
+      {preferences.length > 0 ? (
+        <div className="mb-4 flex flex-wrap gap-2">
+          {preferences.map((preference) => (
+            <span
+              key={preference}
+              className="rounded-full border border-[#D1FAE5] bg-[#F0FDF4] px-2.5 py-1 text-[11px] font-medium text-[#166534]"
+            >
+              {preference}
+            </span>
+          ))}
+        </div>
+      ) : null}
+
+      <div className="mb-4 flex items-center gap-4 text-xs text-[#64748B]">
         <span className="flex items-center gap-1">
           <Trophy size={12} className="text-[#F59E0B]" />
           {lesson_count} aulas
@@ -101,21 +154,31 @@ export function SearchResultCard({ instructor }: Props) {
         </span>
       </div>
 
-      {/* ── price + CTA ── */}
       <div className="mt-auto">
-        <div className="mb-3">
-          <span className="text-lg font-bold" style={{ color: '#0284C7' }}>
-            R$ {hourly_rate.toFixed(0)}
-          </span>
-          <span className="text-xs text-[#64748B]">/aula</span>
-        </div>
+        {priceEntries.length > 0 ? (
+          <div className="mb-3 space-y-1.5">
+            {priceEntries.map((entry) => (
+              <div key={entry.label} className="flex items-baseline justify-between gap-3">
+                <span className="text-xs font-medium text-[#64748B]">{entry.label}</span>
+                <div>
+                  <span className="text-lg font-bold text-[#0284C7]">R$ {entry.price.toFixed(0)}</span>
+                  <span className="text-xs text-[#64748B]">/aula</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="mb-3">
+            <span className="text-lg font-bold text-[#0284C7]">R$ {hourly_rate.toFixed(0)}</span>
+            <span className="text-xs text-[#64748B]">/aula</span>
+          </div>
+        )}
 
         <Link
           href={`/instrutor/${id}`}
-          className="flex w-full items-center justify-center py-2.5 px-4 text-sm font-medium text-white rounded-[6px] transition-opacity hover:opacity-90 active:opacity-80"
-          style={{ background: '#F97316' }}
+          className="flex w-full items-center justify-center rounded-[6px] bg-[#F97316] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 active:opacity-80"
         >
-          Ver horários disponíveis
+          Ver horarios disponiveis
         </Link>
       </div>
     </div>
