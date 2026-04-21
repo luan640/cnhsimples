@@ -14,7 +14,8 @@ import {
 } from 'lucide-react'
 
 import type { InstructorService, PickupRange } from '@/lib/instructors/services'
-import { studentPrice, PLATFORM_SPLIT, serviceTitle } from '@/lib/instructors/services'
+import { studentPrice, serviceTitle } from '@/lib/instructors/services'
+import { formatSplitPercent } from '@/lib/revenue-split'
 import {
   upsertServiceAction,
   deleteServiceAction,
@@ -35,8 +36,8 @@ const CATEGORY_COLOR: Record<string, { bg: string; text: string }> = {
 }
 
 type Props = {
-  profileId: string
   initialServices: InstructorService[]
+  platformSplitRate: number
 }
 
 function formatBRL(value: number) {
@@ -179,10 +180,12 @@ function serviceToForm(service: InstructorService): FormState {
 
 function ServiceModal({
   service,
+  platformSplitRate,
   onClose,
   onSave,
 }: {
   service: InstructorService | null
+  platformSplitRate: number
   onClose: () => void
   onSave: (payload: ServicePayload, id?: string) => Promise<void>
 }) {
@@ -196,7 +199,7 @@ function ServiceModal({
   }
 
   const priceNum = parseFloat(form.price.replace(',', '.')) || 0
-  const studentTotal = priceNum > 0 ? studentPrice(priceNum) : 0
+  const studentTotal = priceNum > 0 ? studentPrice(priceNum, platformSplitRate) : 0
   const lessonCount = parseInt(form.lesson_count) || 1
   const previewTitle = serviceTitle({
     service_type: form.service_type,
@@ -317,7 +320,7 @@ function ServiceModal({
           }
           hint={
             priceNum > 0
-              ? `Valor cobrado ao aluno: ${formatBRL(studentTotal)} (plataforma: ${PLATFORM_SPLIT * 100}%)`
+              ? `Valor cobrado ao aluno: ${formatBRL(studentTotal)} (plataforma: ${formatSplitPercent(platformSplitRate)}%)`
               : undefined
           }
         >
@@ -538,11 +541,13 @@ function DeleteModal({
 
 function ServiceCard({
   service,
+  platformSplitRate,
   onEdit,
   onDelete,
   onToggleActive,
 }: {
   service: InstructorService
+  platformSplitRate: number
   onEdit: () => void
   onDelete: () => void
   onToggleActive: (active: boolean) => Promise<void>
@@ -611,7 +616,7 @@ function ServiceCard({
             Cobrado ao aluno
           </p>
           <p className="text-base font-semibold text-[#0F172A]">
-            {formatBRL(studentPrice(service.price))}
+            {formatBRL(studentPrice(service.price, platformSplitRate))}
           </p>
         </div>
       </div>
@@ -714,9 +719,13 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
   )
 }
 
-export function ServicosView({ profileId: _profileId, initialServices }: Props) {
+export function ServicosView({
+  initialServices,
+  platformSplitRate,
+}: Props) {
   const router = useRouter()
   const services = initialServices
+  const platformSplitPercent = formatSplitPercent(platformSplitRate)
 
   const [modal, setModal] = useState<
     | { type: 'create' }
@@ -782,7 +791,7 @@ export function ServicosView({ profileId: _profileId, initialServices }: Props) 
       {services.length > 0 ? (
         <div className="mx-4 mt-4 rounded-[10px] border border-[#D1FAE5] bg-[#F0FDF4] px-4 py-3 text-xs text-[#065F46]">
           O valor que voce define e o que entra na sua carteira. A plataforma adiciona{' '}
-          <strong>{PLATFORM_SPLIT * 100}%</strong> ao cobrar o aluno.
+          <strong>{platformSplitPercent}%</strong> ao cobrar o aluno.
         </div>
       ) : null}
 
@@ -795,6 +804,7 @@ export function ServicosView({ profileId: _profileId, initialServices }: Props) 
               <ServiceCard
                 key={service.id}
                 service={service}
+                platformSplitRate={platformSplitRate}
                 onEdit={() => setModal({ type: 'edit', service })}
                 onDelete={() => setModal({ type: 'delete', service })}
                 onToggleActive={(active) => handleToggleActive(service.id, active)}
@@ -807,6 +817,7 @@ export function ServicosView({ profileId: _profileId, initialServices }: Props) 
       {modal?.type === 'create' || modal?.type === 'edit' ? (
         <ServiceModal
           service={modal.type === 'edit' ? modal.service : null}
+          platformSplitRate={platformSplitRate}
           onClose={() => setModal(null)}
           onSave={handleUpsert}
         />

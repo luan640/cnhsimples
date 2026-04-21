@@ -110,3 +110,38 @@ export async function activateInstructor(instructorId: string, userId: string) {
   revalidatePath('/admin/instrutores')
   revalidatePath('/admin')
 }
+
+function parsePercent(rawValue: string) {
+  const normalized = rawValue.replace(',', '.').trim()
+  const percent = Number(normalized)
+
+  if (!Number.isFinite(percent)) {
+    throw new Error('Informe um percentual válido.')
+  }
+
+  if (percent < 0 || percent >= 100) {
+    throw new Error('O percentual da plataforma deve estar entre 0% e 99,99%.')
+  }
+
+  return Number((percent / 100).toFixed(4))
+}
+
+export async function updateInstructorPlatformSplit(instructorId: string, formData: FormData) {
+  const admin = createAdminClient()
+  const mode = String(formData.get('mode') ?? 'default')
+
+  const update =
+    mode === 'custom'
+      ? { platform_split_rate: parsePercent(String(formData.get('platform_split_percent') ?? '')) }
+      : { platform_split_rate: null }
+
+  const { error } = await admin.from('instructor_profiles').update(update).eq('id', instructorId)
+
+  if (error) {
+    throw new Error('Não foi possível salvar o split deste instrutor.')
+  }
+
+  revalidatePath(`/admin/instrutores/${instructorId}`)
+  revalidatePath('/admin/instrutores')
+  revalidatePath('/admin')
+}

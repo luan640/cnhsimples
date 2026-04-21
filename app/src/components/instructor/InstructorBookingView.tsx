@@ -7,6 +7,7 @@ import {
   AlertCircle,
   ArrowLeft,
   BookOpen,
+  CalendarCheck,
   CarFront,
   Check,
   ChevronRight,
@@ -26,9 +27,11 @@ import {
 
 import type {
   PublicInstructorDetail,
+  PublicInstructorAvailableSlot,
   PublicInstructorServiceOption,
   PickupRange,
 } from '@/lib/instructors/detail'
+import { BookingPaymentCheckout } from '@/components/booking/BookingPaymentCheckout'
 
 type Props = {
   instructor: PublicInstructorDetail
@@ -38,8 +41,9 @@ type Props = {
 }
 
 type LessonMode = 'meeting' | 'pickup'
-type PaymentMethod = 'pix' | 'card' | 'mercado_pago'
+type PaymentMethod = 'pix' | 'card'
 type Step = 1 | 2 | 3 | 4
+type CheckoutPhase = 'idle' | 'active' | 'success'
 
 type CepLookupResult = {
   cep: string
@@ -645,6 +649,8 @@ function StepAgenda({
   selectedSlotIds,
   onToggleSlot,
   packageSlotLimit,
+  isRefreshing,
+  refreshError,
 }: {
   service: PublicInstructorServiceOption
   isPkg: boolean
@@ -655,6 +661,8 @@ function StepAgenda({
   selectedSlotIds: string[]
   onToggleSlot: (id: string) => void
   packageSlotLimit: number | null
+  isRefreshing: boolean
+  refreshError: string | null
 }) {
   const count = selectedSlotIds.length
   const progress = packageSlotLimit !== null ? `${count} de ${packageSlotLimit}` : null
@@ -669,9 +677,23 @@ function StepAgenda({
             ? `Selecione exatamente ${service.lesson_count} horários para o pacote.`
             : 'Selecione um ou mais horários disponíveis.'
         }
-      />
+        />
 
-      {/* Date scroll */}
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-[12px] border border-[#E2E8F0] bg-white px-4 py-3 text-sm text-[#64748B]">
+          <span>{isRefreshing ? 'Atualizando horários livres…' : 'Mostrando apenas horários livres no momento.'}</span>
+          <span className="shrink-0 text-[11px] font-semibold uppercase tracking-[0.12em] text-[#3ECF8E]">
+            Ao vivo
+          </span>
+        </div>
+
+        {refreshError && (
+          <div className="mb-4 flex items-start gap-2 rounded-[12px] border border-amber-200 bg-amber-50 px-4 py-3">
+            <AlertCircle size={15} className="mt-0.5 shrink-0 text-amber-500" />
+            <p className="text-sm text-amber-800">{refreshError}</p>
+          </div>
+        )}
+
+        {/* Date scroll */}
       {groupedDates.length > 0 ? (
         <>
           <div className="mb-2 flex items-center justify-between">
@@ -800,9 +822,8 @@ function StepPayment({
   const pickupTotal = pickupSurchargePerLesson * pickupTripCount
 
   const METHODS = [
-    { id: 'pix' as const, title: 'PIX', description: 'Pagamento instantâneo com confirmação rápida.', icon: QrCode },
-    { id: 'card' as const, title: 'Cartão', description: 'Débito ou crédito no fluxo final de checkout.', icon: CreditCard },
-    { id: 'mercado_pago' as const, title: 'Mercado Pago', description: 'Finalização segura com a carteira da plataforma.', icon: ShieldCheck },
+    { id: 'pix' as const, title: 'PIX', description: 'Pagamento instantâneo. Escaneie o QR code aqui mesmo.', icon: QrCode },
+    { id: 'card' as const, title: 'Cartão de crédito', description: 'Pague diretamente com cartão, sem sair da plataforma.', icon: CreditCard },
   ]
 
   return (
@@ -925,17 +946,54 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   const [lessonMode, setLessonMode] = useState<LessonMode>('meeting')
   const [selectedDate, setSelectedDate] = useState(instructor.available_slots[0]?.date ?? '')
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([])
+  const [availableSlots, setAvailableSlots] = useState<PublicInstructorAvailableSlot[]>(instructor.available_slots)
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('pix')
   const [pickupCep, setPickupCep] = useState(studentCep ? formatCep(studentCep) : '')
   const [pickupCepStatus, setPickupCepStatus] = useState('')
   const [manualStudentLat, setManualStudentLat] = useState<number | null>(null)
   const [manualStudentLon, setManualStudentLon] = useState<number | null>(null)
   const [isPickupCepPending, startPickupCepTransition] = useTransition()
+  const [isRefreshingSlots, setIsRefreshingSlots] = useState(false)
+  const [slotRefreshError, setSlotRefreshError] = useState<string | null>(null)
+  const [checkoutPhase, setCheckoutPhase] = useState<CheckoutPhase>('idle')
+  const [successBookingGroupId, setSuccessBookingGroupId] = useState<string | null>(null)
+  const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
   const selectedService = instructor.services.find((s) => s.id === selectedServiceId) ?? null
   const isPkg = selectedService?.service_type === 'package'
   const packageSlotLimit = isPkg ? (selectedService?.lesson_count ?? 1) : null
   const pickupRanges = selectedService?.pickup_ranges ?? []
+
+  async function refreshAvailableSlots({ silent = false }: { silent?: boolean } = {}) {
+    if (!silent) {
+      setIsRefreshingSlots(true)
+    }
+
+    try {
+      const response = await fetch(`/api/instructors/${instructor.id}/available-slots`, {
+        cache: 'no-store',
+      })
+
+      if (!response.ok) {
+        throw new Error('Não foi possível atualizar os horários disponíveis.')
+      }
+
+      const result = (await response.json()) as { slots?: PublicInstructorAvailableSlot[] }
+      const nextSlots = Array.isArray(result.slots) ? result.slots : []
+      setAvailableSlots(nextSlots)
+      setSlotRefreshError(null)
+      return nextSlots
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Não foi possível atualizar os horários disponíveis.'
+      setSlotRefreshError(message)
+      return null
+    } finally {
+      if (!silent) {
+        setIsRefreshingSlots(false)
+      }
+    }
+  }
 
   const resolvedStudentLat = studentLat ?? manualStudentLat
   const resolvedStudentLon = studentLon ?? manualStudentLon
@@ -965,20 +1023,20 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
     distanceKm >= Math.max(...pickupRanges.map((r) => r.to_km))
 
   const groupedDates = useMemo(() => {
-    const map = new Map<string, typeof instructor.available_slots>()
-    for (const s of instructor.available_slots) {
+    const map = new Map<string, typeof availableSlots>()
+    for (const s of availableSlots) {
       const cur = map.get(s.date) ?? []
       cur.push(s)
       map.set(s.date, cur)
     }
     return Array.from(map.entries()).map(([date, slots]) => ({ date, slots }))
-  }, [instructor.available_slots])
+  }, [availableSlots])
 
   const slotsForDate = groupedDates.find((e) => e.date === selectedDate)?.slots ?? []
 
   const selectedSlots = useMemo(() => {
     const ids = new Set(selectedSlotIds)
-    return instructor.available_slots
+    return availableSlots
       .filter((s) => ids.has(s.id))
       .sort((a, b) => {
         if (a.date !== b.date) {
@@ -987,11 +1045,11 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
 
         return slotStartMinutes(a) - slotStartMinutes(b)
       })
-  }, [instructor.available_slots, selectedSlotIds])
+  }, [availableSlots, selectedSlotIds])
 
   const selectedSlotCount = selectedSlots.length
   const pickupTripCount =
-    selectedSlotCount > 0 ? countPickupTrips(selectedSlots, instructor.available_slots) : 0
+    selectedSlotCount > 0 ? countPickupTrips(selectedSlots, availableSlots) : 0
   const previewPickupTripCount = selectedSlotCount > 0 ? pickupTripCount : lessonMode === 'pickup' ? 1 : 0
 
   const baseAmount = useMemo(() => {
@@ -1022,11 +1080,23 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   }, [groupedDates, selectedDate])
 
   useEffect(() => {
-    const ids = new Set(instructor.available_slots.map((s) => s.id))
+    const ids = new Set(availableSlots.map((s) => s.id))
     setSelectedSlotIds((cur) => cur.filter((id) => ids.has(id)))
-  }, [instructor.available_slots])
+  }, [availableSlots])
 
   useEffect(() => { setSelectedSlotIds([]) }, [selectedServiceId])
+
+  useEffect(() => {
+    if (step < 3 || checkoutPhase === 'success') return
+
+    void refreshAvailableSlots()
+
+    const interval = window.setInterval(() => {
+      void refreshAvailableSlots({ silent: true })
+    }, 15000)
+
+    return () => window.clearInterval(interval)
+  }, [step, checkoutPhase, instructor.id])
 
   useEffect(() => {
     if (studentLat != null && studentLon != null) {
@@ -1107,7 +1177,38 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   }
 
   function handleBack() {
+    if (checkoutPhase === 'active') {
+      setCheckoutPhase('idle')
+      setCheckoutError(null)
+      return
+    }
     if (step > 1) setStep((s) => (s - 1) as Step)
+  }
+
+  async function handleStartCheckout() {
+    setCheckoutError(null)
+
+    const nextSlots = await refreshAvailableSlots()
+    if (!nextSlots) return
+
+    const nextSlotIds = new Set(nextSlots.map((slot) => slot.id))
+    const hasUnavailableSelection = selectedSlotIds.some((id) => !nextSlotIds.has(id))
+    if (hasUnavailableSelection) {
+      setCheckoutError('Alguns horários deixaram de estar livres. Revise sua seleção antes de pagar.')
+      return
+    }
+
+    setCheckoutPhase('active')
+  }
+
+  function handleCheckoutSuccess(bookingGroupId: string) {
+    setSuccessBookingGroupId(bookingGroupId)
+    setCheckoutPhase('success')
+  }
+
+  function handleCheckoutError(message: string) {
+    setCheckoutError(message)
+    setCheckoutPhase('idle')
   }
 
   return (
@@ -1173,71 +1274,127 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
             selectedSlotIds={selectedSlotIds}
             onToggleSlot={toggleSlot}
             packageSlotLimit={packageSlotLimit}
+            isRefreshing={isRefreshingSlots}
+            refreshError={slotRefreshError}
           />
         )}
 
-        {step === 4 && selectedService && (
-          <StepPayment
-            paymentMethod={paymentMethod}
-            onMethod={setPaymentMethod}
-            service={selectedService}
-            isPkg={isPkg}
-            selectedSlotCount={selectedSlotCount}
-            lessonMode={lessonMode}
-            pickupSurchargePerLesson={pickupSurchargePerLesson}
-            pickupTripCount={pickupTripCount}
-            baseAmount={baseAmount}
-            totalAmount={totalAmount}
-            matchedRange={matchedPickupRange}
-          />
+        {step === 4 && selectedService && checkoutPhase === 'success' && (
+          <div className="flex flex-col items-center gap-4 py-8 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
+              <CalendarCheck size={32} className="text-[#16A34A]" />
+            </div>
+            <div>
+              <p className="text-xl font-bold text-[#0F172A]">Pagamento confirmado!</p>
+              <p className="mt-1 text-sm text-[#64748B]">
+                Seus horários foram reservados. O instrutor receberá a confirmação.
+              </p>
+            </div>
+            <Link
+              href="/aluno"
+              className="mt-2 inline-flex items-center gap-2 rounded-[9999px] bg-[#3ECF8E] px-6 py-3 text-sm font-semibold text-[#052E16] transition-opacity hover:opacity-90"
+            >
+              Ver meus agendamentos
+            </Link>
+          </div>
+        )}
+
+        {step === 4 && selectedService && checkoutPhase === 'active' && (
+          <div>
+            <div className="mb-5">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#3ECF8E]">
+                Etapa 4 de 4
+              </p>
+              <h2 className="mt-1 text-xl font-bold text-[#0F172A]">Pagamento</h2>
+            </div>
+            <BookingPaymentCheckout
+              paymentMethod={paymentMethod}
+              bookingPayload={{
+                instructor_id: instructor.id,
+                service_id: selectedServiceId,
+                slot_ids: selectedSlotIds,
+                lesson_mode: lessonMode,
+                total_amount: totalAmount,
+              }}
+              onSuccess={handleCheckoutSuccess}
+              onError={handleCheckoutError}
+              onBack={() => { setCheckoutPhase('idle'); setCheckoutError(null) }}
+            />
+          </div>
+        )}
+
+        {step === 4 && selectedService && checkoutPhase === 'idle' && (
+          <>
+            {checkoutError && (
+              <div className="mb-4 flex items-start gap-2 rounded-[12px] border border-red-200 bg-red-50 px-4 py-3">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" className="mt-0.5 shrink-0 text-red-500" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+                <p className="text-sm text-red-700">{checkoutError}</p>
+              </div>
+            )}
+            <StepPayment
+              paymentMethod={paymentMethod}
+              onMethod={setPaymentMethod}
+              service={selectedService}
+              isPkg={isPkg}
+              selectedSlotCount={selectedSlotCount}
+              lessonMode={lessonMode}
+              pickupSurchargePerLesson={pickupSurchargePerLesson}
+              pickupTripCount={pickupTripCount}
+              baseAmount={baseAmount}
+              totalAmount={totalAmount}
+              matchedRange={matchedPickupRange}
+            />
+          </>
         )}
       </div>
 
-      {/* Bottom navigation bar */}
-      <div
-        className="fixed inset-x-0 bottom-0 z-30 border-t border-[#E2E8F0] bg-white px-4 pb-5 pt-3"
-        style={{ boxShadow: '0 -1px 8px rgba(0,0,0,0.06)' }}
-      >
-        <div className="mx-auto flex max-w-lg items-center gap-3">
-          {step > 1 ? (
+      {/* Bottom navigation bar — hidden during active checkout (card form has its own submit) */}
+      {checkoutPhase !== 'active' && checkoutPhase !== 'success' && (
+        <div
+          className="fixed inset-x-0 bottom-0 z-30 border-t border-[#E2E8F0] bg-white px-4 pb-5 pt-3"
+          style={{ boxShadow: '0 -1px 8px rgba(0,0,0,0.06)' }}
+        >
+          <div className="mx-auto flex max-w-lg items-center gap-3">
+            {step > 1 ? (
+              <button
+                type="button"
+                onClick={handleBack}
+                className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] border border-[#E2E8F0] bg-white text-[#64748B] transition-colors hover:border-[#3ECF8E]"
+              >
+                <ArrowLeft size={18} />
+              </button>
+            ) : (
+              <div className="w-12 shrink-0" />
+            )}
+
+            <div className="min-w-0 flex-1">
+              {selectedService && (
+                <>
+                  <p className="truncate text-xs text-[#64748B]">{selectedService.title}</p>
+                  <p className="text-sm font-bold text-[#0F172A]">
+                    {step === 4
+                      ? fmt(totalAmount)
+                      : step >= 3 && selectedSlotCount > 0
+                        ? `${fmt(totalAmount)}${pickupSurchargeTotal > 0 ? ` (incl. busca)` : ''}`
+                        : `${fmt(previewTotalAmount)}${previewPickupSurchargeTotal > 0 ? ` (incl. busca)` : ''}`}
+                  </p>
+                </>
+              )}
+            </div>
+
             <button
               type="button"
-              onClick={handleBack}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-[12px] border border-[#E2E8F0] bg-white text-[#64748B] transition-colors hover:border-[#3ECF8E]"
+              disabled={!canNext[step]}
+              onClick={step < 4 ? handleNext : handleStartCheckout}
+              className="inline-flex h-12 shrink-0 items-center gap-2 rounded-[12px] px-6 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+              style={{ background: step === 4 ? '#F97316' : '#3ECF8E', color: '#052E16' }}
             >
-              <ArrowLeft size={18} />
+              {step === 4 ? 'Ir para pagamento' : 'Próximo'}
+              {step < 4 && <ChevronRight size={16} />}
             </button>
-          ) : (
-            <div className="w-12 shrink-0" />
-          )}
-
-          <div className="min-w-0 flex-1">
-            {selectedService && (
-              <>
-                <p className="truncate text-xs text-[#64748B]">{selectedService.title}</p>
-                <p className="text-sm font-bold text-[#0F172A]">
-                  {step === 4
-                    ? fmt(totalAmount)
-                    : step >= 3 && selectedSlotCount > 0
-                      ? `${fmt(totalAmount)}${pickupSurchargeTotal > 0 ? ` (incl. busca)` : ''}`
-                      : `${fmt(previewTotalAmount)}${previewPickupSurchargeTotal > 0 ? ` (incl. busca)` : ''}`}
-                </p>
-              </>
-            )}
           </div>
-
-          <button
-            type="button"
-            disabled={!canNext[step]}
-            onClick={step < 4 ? handleNext : undefined}
-            className="inline-flex h-12 shrink-0 items-center gap-2 rounded-[12px] px-6 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-            style={{ background: step === 4 ? '#F97316' : '#3ECF8E', color: '#052E16' }}
-          >
-            {step === 4 ? 'Ir para pagamento' : 'Próximo'}
-            {step < 4 && <ChevronRight size={16} />}
-          </button>
         </div>
-      </div>
+      )}
     </div>
   )
 }

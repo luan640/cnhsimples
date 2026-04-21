@@ -30,7 +30,7 @@ export default async function Page() {
   const name = profile.full_name ?? meta.full_name ?? meta.name ?? user.email ?? 'Aluno'
   const photoUrl = profile.photo_url ?? meta.avatar_url ?? meta.photo_url ?? null
 
-  const bookings = await getStudentBookings(user.id)
+  const bookings = await getStudentBookings(profile.id)
 
   return <StudentHome name={name} photoUrl={photoUrl} bookings={bookings} />
 }

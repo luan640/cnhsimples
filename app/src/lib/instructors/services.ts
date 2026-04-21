@@ -1,10 +1,10 @@
 import { unstable_noStore as noStore } from 'next/cache'
+
 import { createAdminClient } from '@/lib/supabase/admin'
+import { studentPriceFromInstructorAmount } from '@/lib/revenue-split'
 
-export const PLATFORM_SPLIT = 0.20 // 20% platform fee — configurable by admin in the future
-
-export function studentPrice(instructorPrice: number): number {
-  return instructorPrice / (1 - PLATFORM_SPLIT)
+export function studentPrice(instructorPrice: number, platformSplitRate: number): number {
+  return studentPriceFromInstructorAmount(instructorPrice, platformSplitRate)
 }
 
 export type PickupRange = {
@@ -28,7 +28,9 @@ export type InstructorService = {
   sort_order: number
 }
 
-export function serviceTitle(service: Pick<InstructorService, 'service_type' | 'category' | 'lesson_count'>): string {
+export function serviceTitle(
+  service: Pick<InstructorService, 'service_type' | 'category' | 'lesson_count'>
+): string {
   const cat = service.category ? ` — Categoria ${service.category}` : ''
   if (service.service_type === 'package') return `Pacote ${service.lesson_count} Aulas${cat}`
   return `Aula Avulsa${cat}`
@@ -39,7 +41,9 @@ export async function getInstructorServices(profileId: string): Promise<Instruct
   const admin = createAdminClient()
   const { data } = await admin
     .from('instructor_services')
-    .select('id, category, service_type, lesson_count, price, accepts_home_pickup, pickup_ranges, accepts_student_vehicle, provides_vehicle, notes, is_active, sort_order')
+    .select(
+      'id, category, service_type, lesson_count, price, accepts_home_pickup, pickup_ranges, accepts_student_vehicle, provides_vehicle, notes, is_active, sort_order'
+    )
     .eq('instructor_id', profileId)
     .order('sort_order')
     .order('created_at')

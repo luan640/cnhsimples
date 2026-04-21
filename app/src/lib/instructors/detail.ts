@@ -66,6 +66,40 @@ function formatDate(offsetDays: number) {
   return date.toISOString().slice(0, 10)
 }
 
+export async function getPublicInstructorAvailableSlots(
+  profileId: string
+): Promise<PublicInstructorAvailableSlot[]> {
+  noStore()
+
+  const admin = createAdminClient()
+  const startDate = formatDate(0)
+  const endDate = formatDate(21)
+
+  const { data, error } = await admin
+    .from('availability_slots')
+    .select('id, date, hour, minute, slot_duration_minutes')
+    .eq('instructor_id', profileId)
+    .eq('status', 'available')
+    .gte('date', startDate)
+    .lte('date', endDate)
+    .order('date')
+    .order('hour')
+    .order('minute')
+
+  if (error) {
+    console.error('[instructors/detail] available slots error:', error.message)
+    return []
+  }
+
+  return (data ?? []).map((slot) => ({
+    id: slot.id,
+    date: slot.date,
+    hour: slot.hour,
+    minute: slot.minute ?? 0,
+    slot_duration_minutes: slot.slot_duration_minutes ?? 60,
+  }))
+}
+
 export async function getPublicInstructorDetail(
   profileId: string
 ): Promise<PublicInstructorDetail | null> {

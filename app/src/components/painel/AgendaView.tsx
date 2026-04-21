@@ -70,7 +70,6 @@ function isAbsent(date: Date, absences: AbsenceBlock[]): boolean {
 // ─── Slot colors ────────────────────────────────────────────────────────────
 const SLOT_STYLE: Record<string, { bg: string; text: string; border: string }> = {
   available:  { bg: '#D1FAE5', text: '#065F46', border: '#059669' },
-  reserved:   { bg: '#FEF3C7', text: '#B45309', border: '#F59E0B' },
   booked:     { bg: '#E0F2FE', text: '#0369A1', border: '#0284C7' },
   completed:  { bg: '#F1F5F9', text: '#475569', border: '#94A3B8' },
   blocked:    { bg: '#FEE2E2', text: '#DC2626', border: '#DC2626' },
@@ -231,7 +230,6 @@ function SlotDetailModal({
   const endLabel = formatTime(Math.floor(endMin / 60), endMin % 60)
 
   const STATUS_LABEL: Record<string, string> = {
-    reserved: 'Reservado',
     available: 'Disponível',
     booked: 'Agendado',
     completed: 'Concluído',
@@ -304,7 +302,7 @@ function SlotDetailModal({
           </div>
         )}
 
-        {slot.status !== 'reserved' && slot.status !== 'booked' && slot.status !== 'completed' && (
+        {slot.status !== 'booked' && slot.status !== 'completed' && (
           <div className="space-y-2">
             {slot.status === 'available' && (
               <button
@@ -965,7 +963,7 @@ function DayTimeline({
                     >
                       <div className="flex-1 min-w-0">
                         <p className="text-xs font-semibold truncate" style={{ color: s.text }}>
-                          {slot.booking ? slot.booking.student_name : slot.status === 'blocked' ? 'Bloqueado' : slot.status === 'reserved' ? 'Reservado' : 'Disponível'}
+                          {slot.booking ? slot.booking.student_name : slot.status === 'blocked' ? 'Bloqueado' : 'Disponível'}
                         </p>
                         <p className="text-[10px]" style={{ color: s.text, opacity: 0.75 }}>
                           {formatTime(slot.hour, slot.minute)} – {endLabel} · {slot.slot_duration_minutes}min
@@ -1088,7 +1086,7 @@ function WeekGrid({
                             }}
                           >
                             <span className="block font-medium truncate">
-                              {slot.booking ? slot.booking.student_name.split(' ')[0] : slot.status === 'blocked' ? '🚫' : slot.status === 'reserved' ? '⏳' : '✓'}
+                              {slot.booking ? slot.booking.student_name.split(' ')[0] : slot.status === 'blocked' ? '🚫' : '✓'}
                             </span>
                             <span className="block opacity-75">
                               {formatTime(slot.hour, slot.minute)}

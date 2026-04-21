@@ -30,8 +30,13 @@ export type InstructorDetail = InstructorRow & {
   service_radius_km: number | null
   pix_key_type: string | null
   pix_key: string | null
+  platform_split_rate: number | null
   email: string | null
   rejection_reason: string | null
+}
+
+export type RevenueSplitSettings = {
+  defaultPlatformSplitRate: number
 }
 
 export type DocumentRow = {
@@ -135,6 +140,23 @@ export async function getInstructorDetail(id: string): Promise<{
   return {
     profile: { ...(profileRes.data as InstructorDetail), email },
     documents: (docsRes.data ?? []) as DocumentRow[],
+  }
+}
+
+export async function getRevenueSplitSettings(): Promise<RevenueSplitSettings> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('platform_settings')
+    .select('default_platform_split_rate')
+    .eq('id', true)
+    .maybeSingle()
+
+  if (error && !error.message.includes('does not exist')) {
+    console.error('[admin] getRevenueSplitSettings:', error.message)
+  }
+
+  return {
+    defaultPlatformSplitRate: Number(data?.default_platform_split_rate ?? 0.2),
   }
 }
 

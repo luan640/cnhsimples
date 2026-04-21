@@ -10,7 +10,7 @@ export type InstructorStatus =
 
 export type CNHCategory = 'A' | 'B' | 'AB'
 
-export type SlotStatus = 'available' | 'reserved' | 'booked' | 'completed' | 'blocked'
+export type SlotStatus = 'available' | 'booked' | 'completed' | 'blocked'
 
 export type BookingStatus = 'pending' | 'confirmed' | 'completed' | 'cancelled'
 
