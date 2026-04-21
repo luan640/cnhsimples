@@ -98,11 +98,16 @@ export async function syncLatestInstructorPlanSubscriptionByEmail(
 
   const approvedSubscription = [...(response.results ?? [])]
     .filter(
-      (item) =>
-        item.id &&
-        item.status === 'authorized' &&
-        typeof item.external_reference === 'string' &&
-        item.external_reference.startsWith(`membership:${instructorId}:`)
+      (item) => {
+        const externalReference =
+          typeof item.external_reference === 'string' ? item.external_reference : ''
+
+        return (
+          Boolean(item.id) &&
+          item.status === 'authorized' &&
+          externalReference.startsWith(`membership:${instructorId}:`)
+        )
+      }
     )
     .sort((a, b) => {
       const aDate = a.date_created ? new Date(String(a.date_created)).getTime() : 0
