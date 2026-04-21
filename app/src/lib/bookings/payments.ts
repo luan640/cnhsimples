@@ -461,13 +461,60 @@ export async function getBookingGroupStatus(
   studentId: string
 ): Promise<{ status: string } | null> {
   const admin = createAdminClient()
+  const paymentClient = getMercadoPagoPaymentClient()
 
-  const { data } = await admin
+  const { data: bookingGroup } = await admin
     .from('booking_groups')
     .select('status')
     .eq('id', bookingGroupId)
     .eq('student_id', studentId)
     .maybeSingle()
 
-  return data ? { status: data.status } : null
+  if (!bookingGroup) return null
+  if (
+    bookingGroup.status === 'paid' ||
+    bookingGroup.status === 'cancelled' ||
+    bookingGroup.status === 'expired'
+  ) {
+    return { status: bookingGroup.status }
+  }
+
+  const { data: paymentRow } = await admin
+    .from('payments')
+    .select('id, mp_payment_id, status')
+    .eq('booking_group_id', bookingGroupId)
+    .order('created_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (!paymentRow?.mp_payment_id) {
+    return { status: bookingGroup.status }
+  }
+
+  try {
+    const mpPayment = await paymentClient.get({ id: paymentRow.mp_payment_id })
+    const mpStatus = typeof mpPayment.status === 'string' ? mpPayment.status : null
+
+    if (mpStatus === 'approved') {
+      if (bookingGroup.status !== 'paid' || paymentRow.status !== 'approved') {
+        await confirmBookingGroupPayment(bookingGroupId, String(paymentRow.mp_payment_id))
+      }
+      return { status: 'paid' }
+    }
+
+    if (mpStatus === 'rejected' || mpStatus === 'cancelled') {
+      if (bookingGroup.status !== 'cancelled') {
+        await cancelBookingGroupPayment(bookingGroupId)
+      }
+      return { status: 'cancelled' }
+    }
+  } catch (error) {
+    console.error('[bookings/payments] failed to sync payment status during polling:', {
+      bookingGroupId,
+      mpPaymentId: paymentRow.mp_payment_id,
+      error,
+    })
+  }
+
+  return { status: bookingGroup.status }
 }
