@@ -8,6 +8,13 @@ interface Props {
   instructor: InstructorCardType
 }
 
+function formatPrice(value: number) {
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 export function SearchResultCard({ instructor }: Props) {
   const {
     id,
@@ -164,7 +171,7 @@ export function SearchResultCard({ instructor }: Props) {
               <div key={entry.label} className="flex items-baseline justify-between gap-3">
                 <span className="text-xs font-medium text-[#64748B]">{entry.label}</span>
                 <div>
-                  <span className="text-lg font-bold text-[#0284C7]">R$ {entry.price.toFixed(0)}</span>
+                  <span className="text-lg font-bold text-[#0284C7]">R$ {formatPrice(entry.price)}</span>
                   <span className="text-xs text-[#64748B]">/aula</span>
                 </div>
               </div>
@@ -175,7 +182,7 @@ export function SearchResultCard({ instructor }: Props) {
             <p className="text-[10px] font-semibold uppercase tracking-[0.15em] text-[#94A3B8]">
               A partir de
             </p>
-            <span className="text-lg font-bold text-[#0284C7]">R$ {hourly_rate.toFixed(0)}</span>
+            <span className="text-lg font-bold text-[#0284C7]">R$ {formatPrice(hourly_rate)}</span>
           </div>
         )}
 

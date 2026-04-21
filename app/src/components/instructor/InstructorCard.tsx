@@ -13,6 +13,13 @@ const CATEGORY_ICON = {
   AB: Car,
 }
 
+function formatPrice(value: number) {
+  return value.toLocaleString('pt-BR', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })
+}
+
 function Badge({ label, variant }: { label: string; variant: 'gold' | 'green' | 'blue' }) {
   const styles = {
     gold: { background: '#FEF3C7', color: '#92400E' },
@@ -126,15 +133,15 @@ export function InstructorCard({ instructor }: Props) {
           </div>
 
           {/* price */}
-        <div className="text-right">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-[#94A3B8]">
-            A partir de
-          </p>
-          <span className="text-base font-bold text-[#0F172A]">
-            R$ {hourly_rate.toFixed(0)}
-          </span>
+          <div className="text-right">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-[#94A3B8]">
+              A partir de
+            </p>
+            <span className="text-base font-bold text-[#0F172A]">
+              R$ {formatPrice(hourly_rate)}
+            </span>
+          </div>
         </div>
-      </div>
 
         {lesson_count > 0 && (
           <p className="text-[11px] text-[#94A3B8]">
