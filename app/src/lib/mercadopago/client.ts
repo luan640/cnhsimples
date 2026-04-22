@@ -10,6 +10,10 @@ function getMercadoPagoAccessToken() {
   return accessToken
 }
 
+function getMercadoPagoSubscriptionsAccessToken() {
+  return process.env.MERCADO_PAGO_SUBSCRIPTIONS_ACCESS_TOKEN?.trim() || getMercadoPagoAccessToken()
+}
+
 export function getMercadoPagoClient() {
   return new MercadoPagoConfig({
     accessToken: getMercadoPagoAccessToken(),
@@ -28,11 +32,25 @@ export function getMercadoPagoPaymentClient() {
 }
 
 export function getMercadoPagoPreApprovalClient() {
-  return new PreApproval(getMercadoPagoClient())
+  return new PreApproval(
+    new MercadoPagoConfig({
+      accessToken: getMercadoPagoSubscriptionsAccessToken(),
+      options: {
+        timeout: 5000,
+      },
+    })
+  )
 }
 
 export function getMercadoPagoPreApprovalPlanClient() {
-  return new PreApprovalPlan(getMercadoPagoClient())
+  return new PreApprovalPlan(
+    new MercadoPagoConfig({
+      accessToken: getMercadoPagoSubscriptionsAccessToken(),
+      options: {
+        timeout: 5000,
+      },
+    })
+  )
 }
 
 export function getMercadoPagoWebhookSecret() {
