@@ -654,6 +654,9 @@ export async function createInstructorMembershipPayment(
   }
 
   const subscription = await createInstructorSubscription(params.instructorId, amount)
+  if (!subscription) {
+    throw new Error('Nao foi possivel criar o registro da mensalidade.')
+  }
   const idempotencyKey = crypto.randomUUID()
   let payment: Awaited<ReturnType<typeof paymentClient.create>>
 

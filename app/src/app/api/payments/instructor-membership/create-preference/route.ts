@@ -156,8 +156,9 @@ export async function GET(request: Request) {
   if ('error' in result) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin
     const redirectUrl = new URL('/painel', appUrl)
+    const errorMessage = typeof result.error === 'string' ? result.error : 'Falha ao iniciar pagamento da mensalidade.'
     redirectUrl.searchParams.set('mensalidade', 'error')
-    redirectUrl.searchParams.set('mensalidade_msg', result.error)
+    redirectUrl.searchParams.set('mensalidade_msg', errorMessage)
     return NextResponse.redirect(redirectUrl)
   }
 
