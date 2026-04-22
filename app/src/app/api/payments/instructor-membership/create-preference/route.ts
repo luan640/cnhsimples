@@ -45,35 +45,29 @@ function getErrorMessage(error: unknown) {
   return 'Falha ao iniciar pagamento da mensalidade.'
 }
 
-export async function POST() {
+async function resolveCheckout() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   if (!user) {
-    return NextResponse.json({ error: 'Sessao expirada.' }, { status: 401 })
+    return { error: 'Sessao expirada.', status: 401 as const }
   }
 
   if (user.user_metadata?.role !== 'instructor') {
-    return NextResponse.json({ error: 'Apenas instrutores podem pagar mensalidade.' }, { status: 403 })
+    return { error: 'Apenas instrutores podem pagar mensalidade.', status: 403 as const }
   }
 
   const profile = await getInstructorProfile(user.id)
 
   if (!profile) {
-    return NextResponse.json({ error: 'Perfil do instrutor nao encontrado.' }, { status: 404 })
+    return { error: 'Perfil do instrutor nao encontrado.', status: 404 as const }
   }
 
   if (profile.status !== 'docs_approved' && profile.status !== 'active') {
-    return NextResponse.json(
-      { error: 'A mensalidade so pode ser paga apos a aprovacao documental.' },
-      { status: 400 }
-    )
-  }
-
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL
-
-  if (!appUrl?.trim()) {
-    return NextResponse.json({ error: 'NEXT_PUBLIC_APP_URL nao configurado.' }, { status: 500 })
+    return {
+      error: 'A mensalidade so pode ser paga apos a aprovacao documental.',
+      status: 400 as const,
+    }
   }
 
   try {
@@ -81,10 +75,10 @@ export async function POST() {
     const preApprovalPlanId = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID?.trim() || null
 
     if (!preApprovalPlanId) {
-      return NextResponse.json(
-        { error: 'MERCADO_PAGO_PREAPPROVAL_PLAN_ID nao configurado.' },
-        { status: 500 }
-      )
+      return {
+        error: 'MERCADO_PAGO_PREAPPROVAL_PLAN_ID nao configurado.',
+        status: 500 as const,
+      }
     }
 
     const preApprovalPlanClient = getMercadoPagoPreApprovalPlanClient()
@@ -92,19 +86,16 @@ export async function POST() {
     const checkoutUrl = plan.init_point
 
     if (!checkoutUrl) {
-      return NextResponse.json(
-        { error: 'Mercado Pago nao retornou a URL do checkout do plano.' },
-        { status: 502 }
-      )
+      return {
+        error: 'Mercado Pago nao retornou a URL do checkout do plano.',
+        status: 502 as const,
+      }
     }
 
     const checkoutState = await getCheckoutEligibleInstructorSubscription(profile.id)
 
     if (checkoutState.kind === 'approved') {
-      return NextResponse.json(
-        { error: 'Sua assinatura ja esta ativa.' },
-        { status: 409 }
-      )
+      return { error: 'Sua assinatura ja esta ativa.', status: 409 as const }
     }
 
     if (checkoutState.kind === 'pending') {
@@ -113,21 +104,21 @@ export async function POST() {
         paymentUrl: checkoutUrl,
       })
 
-      return NextResponse.json({
+      return {
         ok: true,
         checkoutUrl,
         subscriptionId: checkoutState.subscription.id,
         reused: true,
-      })
+      } as const
     }
 
     const subscription = await createInstructorSubscription(profile.id, amount)
 
     if (!subscription) {
-      return NextResponse.json(
-        { error: 'Nao foi possivel criar o registro da mensalidade.' },
-        { status: 500 }
-      )
+      return {
+        error: 'Nao foi possivel criar o registro da mensalidade.',
+        status: 500 as const,
+      }
     }
 
     await attachPreApprovalToSubscription(subscription.id, {
@@ -135,18 +126,40 @@ export async function POST() {
       paymentUrl: checkoutUrl,
     })
 
-    return NextResponse.json({
+    return {
       ok: true,
       checkoutUrl,
       subscriptionId: subscription.id,
-    })
+    } as const
   } catch (error) {
     console.error('[mercadopago] create instructor membership preference failed:', error)
-    return NextResponse.json(
-      {
-        error: getErrorMessage(error),
-      },
-      { status: 500 }
-    )
+    return {
+      error: getErrorMessage(error),
+      status: 500 as const,
+    }
   }
+}
+
+export async function POST() {
+  const result = await resolveCheckout()
+
+  if ('error' in result) {
+    return NextResponse.json({ error: result.error }, { status: result.status })
+  }
+
+  return NextResponse.json(result)
+}
+
+export async function GET(request: Request) {
+  const result = await resolveCheckout()
+
+  if ('error' in result) {
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin
+    const redirectUrl = new URL('/painel', appUrl)
+    redirectUrl.searchParams.set('mensalidade', 'error')
+    redirectUrl.searchParams.set('mensalidade_msg', result.error)
+    return NextResponse.redirect(redirectUrl)
+  }
+
+  return NextResponse.redirect(result.checkoutUrl)
 }

@@ -46,18 +46,14 @@ export default async function PainelPage({ searchParams }: { searchParams: Searc
   let membership = profile ? await getLatestInstructorSubscription(profile.id) : null
   const membershipFlash = getSingleParam(params.mensalidade) ?? null
 
-  if (
-    profile &&
-    user.email &&
-    membership?.status === 'pending'
-  ) {
+  if (profile && user.email) {
     try {
       const syncedMembership = await syncLatestInstructorPlanSubscriptionByEmail(profile.id, user.email)
       if (syncedMembership) {
         membership = syncedMembership
       }
     } catch (error) {
-      console.error('[painel] failed to sync latest plan subscription:', error)
+      console.error('[painel] failed to sync latest recurring membership:', error)
     }
   }
 

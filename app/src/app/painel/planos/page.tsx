@@ -39,14 +39,14 @@ export default async function PlanosPage() {
 
   let membership = await getLatestInstructorSubscription(profile.id)
 
-  if (user.email && membership?.status === 'pending') {
+  if (user.email) {
     try {
       const syncedMembership = await syncLatestInstructorPlanSubscriptionByEmail(profile.id, user.email)
       if (syncedMembership) {
         membership = syncedMembership
       }
     } catch (error) {
-      console.error('[planos] failed to sync latest plan subscription:', error)
+      console.error('[planos] failed to sync latest recurring membership:', error)
     }
   }
 
@@ -64,6 +64,10 @@ export default async function PlanosPage() {
   const membershipExpiresAt = membership?.expires_at
     ? new Date(membership.expires_at).toLocaleDateString('pt-BR')
     : null
+  const hasRecurringSubscription = Boolean(
+    membership?.mp_preference_id &&
+    (membership.status === 'approved' || membership.status === 'pending')
+  )
 
   return (
     <div className="p-4 md:p-6 lg:p-8 max-w-4xl">
@@ -133,16 +137,18 @@ export default async function PlanosPage() {
                 Seu plano ja esta ativo
               </p>
               <p>
-                O cancelamento interrompe a renovacao recorrente da assinatura atual no Mercado Pago.
+                {hasRecurringSubscription
+                  ? 'Use o cancelamento abaixo para interromper a recorrencia da assinatura no Mercado Pago.'
+                  : 'Este plano deveria estar vinculado a uma assinatura recorrente. Se o cancelamento nao aparecer, atualize os dados da assinatura no Mercado Pago.'}
               </p>
             </div>
-            <CancelMembershipButton />
+            {hasRecurringSubscription ? <CancelMembershipButton /> : null}
           </div>
         ) : (
           <div>
             <MembershipPaymentButton
               amount={membershipAmount}
-              label={membership?.status === 'pending' ? 'Continuar pagamento da mensalidade' : undefined}
+              label={membership?.status === 'pending' ? 'Continuar assinatura da mensalidade' : undefined}
             />
           </div>
         )}

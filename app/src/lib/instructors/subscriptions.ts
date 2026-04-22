@@ -15,6 +15,25 @@ export { getInstructorMembershipAmount }
 const MEMBERSHIP_PREAPPROVAL_PLAN_ID = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID?.trim() || null
 const MEMBERSHIP_DURATION_DAYS = Number(process.env.INSTRUCTOR_MEMBERSHIP_DURATION_DAYS ?? '30')
 
+export type CreateInstructorMembershipPaymentParams = {
+  instructorId: string
+  amount?: number
+  payerEmail: string
+  cardToken: string
+  cardPaymentMethodId: string
+  cardIssuerId?: string | number | null
+  cardInstallments?: number
+  payerIdentificationType?: string
+  payerIdentificationNumber?: string
+}
+
+export type InstructorMembershipPaymentResult = {
+  subscriptionId: string
+  mpPaymentId: string | null
+  status: string
+  statusDetail: string | null
+}
+
 function toNumber(value: number | string | null | undefined, fallback = 0) {
   if (typeof value === 'number') return value
   if (typeof value === 'string' && value.trim()) {
@@ -82,6 +101,54 @@ async function mergeUserMetadata(userId: string, patch: Record<string, unknown>)
   })
 }
 
+async function activateInstructorFromSubscription(instructorId: string) {
+  const admin = createAdminClient()
+  const { data: profile, error: profileError } = await admin
+    .from('instructor_profiles')
+    .select('id, user_id, full_name')
+    .eq('id', instructorId)
+    .single()
+
+  if (profileError) {
+    throw new Error(profileError.message)
+  }
+
+  const { error: statusError } = await admin
+    .from('instructor_profiles')
+    .update({
+      status: 'active',
+      rejection_reason: null,
+    })
+    .eq('id', profile.id)
+
+  if (statusError) {
+    throw new Error(statusError.message)
+  }
+
+  await mergeUserMetadata(profile.user_id, {
+    status: 'active',
+    rejection_reason: null,
+  })
+
+  try {
+    const { data: authUser } = await admin.auth.admin.getUserById(profile.user_id)
+    const email = authUser.user?.email
+    const name = authUser.user?.user_metadata?.full_name ?? profile.full_name ?? 'instrutor'
+
+    if (email) {
+      await sendInstructorActivatedEmail({
+        to: email,
+        name,
+      })
+    }
+  } catch (error) {
+    console.error('[email] Falha ao enviar ativacao automatica da mensalidade:', error)
+  }
+
+  revalidatePath('/painel')
+  revalidatePath('/buscar')
+}
+
 export async function syncLatestInstructorPlanSubscriptionByEmail(
   instructorId: string,
   payerEmail: string | null | undefined
@@ -112,9 +179,15 @@ export async function syncLatestInstructorPlanSubscriptionByEmail(
     return null
   }
 
+  const currentSubscription =
+    (await getLatestManageableInstructorSubscription(instructorId)) ??
+    (await getLatestApprovedInstructorSubscription(instructorId)) ??
+    (await getLatestInstructorSubscription(instructorId))
+
   return syncInstructorSubscriptionPreApprovalForInstructor(
     instructorId,
-    String(approvedSubscription.id)
+    String(approvedSubscription.id),
+    currentSubscription?.id ?? null
   )
 }
 
@@ -258,6 +331,39 @@ export async function createInstructorSubscription(instructorId: string, amount 
   return normalizeSubscription(data)
 }
 
+async function updateSubscriptionPaymentState(
+  subscriptionId: string,
+  params: {
+    status: InstructorSubscriptionStatus
+    mpPaymentId?: string | null
+    paidAt?: string | null
+    expiresAt?: string | null
+  }
+) {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('instructor_subscriptions')
+    .update({
+      status: params.status,
+      mp_payment_id: params.mpPaymentId ?? null,
+      paid_at: params.paidAt ?? null,
+      expires_at: params.expiresAt ?? null,
+      payment_url: null,
+      mp_preference_id: null,
+    })
+    .eq('id', subscriptionId)
+    .select(
+      'id, instructor_id, plan, value, status, external_reference, mp_preference_id, mp_payment_id, payment_url, paid_at, expires_at, created_at'
+    )
+    .single()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  return normalizeSubscription(data)
+}
+
 export async function attachPreferenceToSubscription(
   subscriptionId: string,
   params: {
@@ -378,50 +484,7 @@ export async function syncInstructorSubscriptionPayment(paymentId: string | numb
   }
 
   if (nextStatus === 'approved') {
-    const { data: profile, error: profileError } = await admin
-      .from('instructor_profiles')
-      .select('id, user_id, full_name')
-      .eq('id', subscriptionRow.instructor_id)
-      .single()
-
-    if (profileError) {
-      throw new Error(profileError.message)
-    }
-
-    const { error: statusError } = await admin
-      .from('instructor_profiles')
-      .update({
-        status: 'active',
-        rejection_reason: null,
-      })
-      .eq('id', profile.id)
-
-    if (statusError) {
-      throw new Error(statusError.message)
-    }
-
-    await mergeUserMetadata(profile.user_id, {
-      status: 'active',
-      rejection_reason: null,
-    })
-
-    try {
-      const { data: authUser } = await admin.auth.admin.getUserById(profile.user_id)
-      const email = authUser.user?.email
-      const name = authUser.user?.user_metadata?.full_name ?? profile.full_name ?? 'instrutor'
-
-      if (email) {
-        await sendInstructorActivatedEmail({
-          to: email,
-          name,
-        })
-      }
-    } catch (error) {
-      console.error('[email] Falha ao enviar ativacao automatica da mensalidade:', error)
-    }
-
-    revalidatePath('/painel')
-    revalidatePath('/buscar')
+    await activateInstructorFromSubscription(subscriptionRow.instructor_id)
   }
 
   return normalizeSubscription(updatedSubscription)
@@ -478,50 +541,7 @@ export async function syncInstructorSubscriptionPreApproval(preApprovalId: strin
   }
 
   if (nextStatus === 'approved') {
-    const { data: profile, error: profileError } = await admin
-      .from('instructor_profiles')
-      .select('id, user_id, full_name')
-      .eq('id', subscriptionRow.instructor_id)
-      .single()
-
-    if (profileError) {
-      throw new Error(profileError.message)
-    }
-
-    const { error: statusError } = await admin
-      .from('instructor_profiles')
-      .update({
-        status: 'active',
-        rejection_reason: null,
-      })
-      .eq('id', profile.id)
-
-    if (statusError) {
-      throw new Error(statusError.message)
-    }
-
-    await mergeUserMetadata(profile.user_id, {
-      status: 'active',
-      rejection_reason: null,
-    })
-
-    try {
-      const { data: authUser } = await admin.auth.admin.getUserById(profile.user_id)
-      const email = authUser.user?.email
-      const name = authUser.user?.user_metadata?.full_name ?? profile.full_name ?? 'instrutor'
-
-      if (email) {
-        await sendInstructorActivatedEmail({
-          to: email,
-          name,
-        })
-      }
-    } catch (error) {
-      console.error('[email] Falha ao enviar ativacao automatica da assinatura:', error)
-    }
-
-    revalidatePath('/painel')
-    revalidatePath('/buscar')
+    await activateInstructorFromSubscription(subscriptionRow.instructor_id)
   }
 
   return normalizeSubscription(updatedSubscription)
@@ -539,8 +559,11 @@ export async function syncInstructorSubscriptionPreApprovalForInstructor(
   let targetSubscriptionId = subscriptionId ?? null
 
   if (!targetSubscriptionId) {
-    const pendingSubscription = await getLatestPendingInstructorSubscription(instructorId)
-    targetSubscriptionId = pendingSubscription?.id ?? null
+    const targetSubscription =
+      (await getLatestManageableInstructorSubscription(instructorId)) ??
+      (await getLatestApprovedInstructorSubscription(instructorId)) ??
+      (await getLatestPendingInstructorSubscription(instructorId))
+    targetSubscriptionId = targetSubscription?.id ?? null
   }
 
   if (!targetSubscriptionId) {
@@ -574,53 +597,166 @@ export async function syncInstructorSubscriptionPreApprovalForInstructor(
   }
 
   if (nextStatus === 'approved') {
-    const { data: profile, error: profileError } = await admin
-      .from('instructor_profiles')
-      .select('id, user_id, full_name')
-      .eq('id', instructorId)
-      .single()
-
-    if (profileError) {
-      throw new Error(profileError.message)
-    }
-
-    const { error: statusError } = await admin
-      .from('instructor_profiles')
-      .update({
-        status: 'active',
-        rejection_reason: null,
-      })
-      .eq('id', profile.id)
-
-    if (statusError) {
-      throw new Error(statusError.message)
-    }
-
-    await mergeUserMetadata(profile.user_id, {
-      status: 'active',
-      rejection_reason: null,
-    })
-
-    try {
-      const { data: authUser } = await admin.auth.admin.getUserById(profile.user_id)
-      const email = authUser.user?.email
-      const name = authUser.user?.user_metadata?.full_name ?? profile.full_name ?? 'instrutor'
-
-      if (email) {
-        await sendInstructorActivatedEmail({
-          to: email,
-          name,
-        })
-      }
-    } catch (error) {
-      console.error('[email] Falha ao enviar ativacao automatica da assinatura:', error)
-    }
-
-    revalidatePath('/painel')
-    revalidatePath('/buscar')
+    await activateInstructorFromSubscription(instructorId)
   }
 
   return normalizeSubscription(updatedSubscription)
+}
+
+export async function createInstructorMembershipPayment(
+  params: CreateInstructorMembershipPaymentParams
+): Promise<InstructorMembershipPaymentResult> {
+  const admin = createAdminClient()
+  const paymentClient = getMercadoPagoPaymentClient()
+  const amount = params.amount ?? getInstructorMembershipAmount()
+
+  const activeSubscription = await getLatestApprovedInstructorSubscription(params.instructorId)
+  if (activeSubscription) {
+    const expiresAt = activeSubscription.expires_at
+      ? new Date(activeSubscription.expires_at).getTime()
+      : null
+
+    if (!expiresAt || expiresAt > Date.now()) {
+      throw new Error('Sua mensalidade ja esta ativa.')
+    }
+  }
+
+  const pendingSubscription = await getLatestPendingInstructorSubscription(params.instructorId)
+  if (pendingSubscription?.mp_payment_id) {
+    const existingPayment = await paymentClient.get({ id: pendingSubscription.mp_payment_id })
+    const existingStatus = typeof existingPayment.status === 'string' ? existingPayment.status : 'pending'
+
+    if (existingStatus === 'approved') {
+      await syncInstructorSubscriptionPayment(pendingSubscription.mp_payment_id)
+      throw new Error('Sua mensalidade ja foi aprovada. Atualize a pagina.')
+    }
+
+    if (existingStatus === 'pending' || existingStatus === 'in_process' || existingStatus === 'in_mediation') {
+      throw new Error('Seu ultimo pagamento ainda esta em processamento. Aguarde alguns instantes.')
+    }
+
+    await updateSubscriptionPaymentState(pendingSubscription.id, {
+      status: mapPaymentStatus(existingStatus),
+      mpPaymentId: pendingSubscription.mp_payment_id,
+      paidAt: null,
+      expiresAt: null,
+    })
+  }
+
+  const { data: instructor, error: instructorError } = await admin
+    .from('instructor_profiles')
+    .select('id, full_name')
+    .eq('id', params.instructorId)
+    .single()
+
+  if (instructorError || !instructor) {
+    throw new Error('Perfil do instrutor nao encontrado.')
+  }
+
+  const subscription = await createInstructorSubscription(params.instructorId, amount)
+  const idempotencyKey = crypto.randomUUID()
+  let payment: Awaited<ReturnType<typeof paymentClient.create>>
+
+  try {
+    payment = await paymentClient.create({
+      body: {
+        transaction_amount: amount,
+        description: `Mensalidade CNH Simples - ${instructor.full_name}`,
+        payment_method_id: params.cardPaymentMethodId,
+        token: params.cardToken,
+        installments: params.cardInstallments ?? 1,
+        issuer_id: params.cardIssuerId ? Number(params.cardIssuerId) : undefined,
+        external_reference: subscription.external_reference,
+        three_d_secure_mode: 'optional' as const,
+        capture: true,
+        binary_mode: false,
+        payer: {
+          email: params.payerEmail,
+          identification: {
+            type: params.payerIdentificationType ?? 'CPF',
+            number: (params.payerIdentificationNumber ?? '').replace(/\D/g, ''),
+          },
+        },
+      },
+      requestOptions: { idempotencyKey },
+    })
+  } catch (error) {
+    await updateSubscriptionPaymentState(subscription.id, {
+      status: 'rejected',
+      mpPaymentId: null,
+      paidAt: null,
+      expiresAt: null,
+    })
+    throw error
+  }
+
+  const mpPaymentId = payment.id != null ? String(payment.id) : null
+  const mpStatus = typeof payment.status === 'string' ? payment.status : 'pending'
+  const mappedStatus = mapPaymentStatus(mpStatus)
+
+  await updateSubscriptionPaymentState(subscription.id, {
+    status: mappedStatus,
+    mpPaymentId,
+    paidAt: mappedStatus === 'approved' ? new Date().toISOString() : null,
+    expiresAt:
+      mappedStatus === 'approved'
+        ? addDays(new Date(), MEMBERSHIP_DURATION_DAYS).toISOString()
+        : null,
+  })
+
+  if (mpPaymentId && mappedStatus === 'approved') {
+    await syncInstructorSubscriptionPayment(mpPaymentId)
+  }
+
+  return {
+    subscriptionId: subscription.id,
+    mpPaymentId,
+    status: mpStatus,
+    statusDetail: typeof payment.status_detail === 'string' ? payment.status_detail : null,
+  }
+}
+
+export async function getInstructorMembershipStatus(instructorId: string, subscriptionId: string) {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('instructor_subscriptions')
+    .select(
+      'id, instructor_id, plan, value, status, external_reference, mp_preference_id, mp_payment_id, payment_url, paid_at, expires_at, created_at'
+    )
+    .eq('id', subscriptionId)
+    .eq('instructor_id', instructorId)
+    .maybeSingle()
+
+  if (error) {
+    throw new Error(error.message)
+  }
+
+  const subscription = normalizeSubscription(data)
+  if (!subscription) return null
+
+  if (
+    subscription.status === 'approved' ||
+    subscription.status === 'rejected' ||
+    subscription.status === 'cancelled' ||
+    subscription.status === 'expired' ||
+    !subscription.mp_payment_id
+  ) {
+    return { status: subscription.status }
+  }
+
+  try {
+    const updated = await syncInstructorSubscriptionPayment(subscription.mp_payment_id)
+    return { status: updated?.status ?? subscription.status }
+  } catch (error) {
+    console.error('[subscriptions] failed to sync instructor payment status during polling:', {
+      instructorId,
+      subscriptionId,
+      mpPaymentId: subscription.mp_payment_id,
+      error,
+    })
+  }
+
+  return { status: subscription.status }
 }
 
 export async function cancelInstructorSubscription(instructorId: string) {
