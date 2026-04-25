@@ -37,7 +37,7 @@ export type LessonGoal =
   | 'specific'
   | 'other'
 
-export type DocumentType = 'cnh' | 'detran_credential'
+export type DocumentType = 'cnh_front' | 'cnh_back'
 
 export interface UserProfile {
   id: string

@@ -35,8 +35,8 @@ type InstructorSignupPayload = {
 }
 
 const DOCUMENT_FIELDS: Array<{ field: string; type: DocumentType }> = [
-  { field: 'cnhDocument', type: 'cnh' },
-  { field: 'credentialDocument', type: 'detran_credential' },
+  { field: 'cnhFrontDocument', type: 'cnh_front' },
+  { field: 'cnhBackDocument', type: 'cnh_back' },
 ]
 
 function createAdminClient() {
@@ -70,10 +70,6 @@ function validatePayload(payload: InstructorSignupPayload) {
   if (!payload.birthDate) return 'Data de nascimento e obrigatoria.'
   if (age < 21) return 'O instrutor precisa ter pelo menos 21 anos.'
   if (!payload.phone.trim()) return 'Telefone e obrigatorio.'
-  if (!payload.cnhNumber.trim()) return 'Numero da CNH e obrigatorio.'
-  if (!payload.cnhExpiresAt) return 'Validade da CNH e obrigatoria.'
-  if (!payload.detranCredentialNumber.trim()) return 'Numero do registro DETRAN e obrigatorio.'
-  if (!payload.detranCredentialExpiresAt) return 'Validade da credencial DETRAN e obrigatoria.'
   if (!payload.cep.trim()) return 'CEP e obrigatorio.'
   if (!payload.street.trim()) return 'Logradouro e obrigatorio.'
   if (!payload.number.trim()) return 'Numero do endereco e obrigatorio.'

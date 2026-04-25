@@ -5,7 +5,6 @@ import Link from 'next/link'
 import {
   ArrowLeft,
   ArrowRight,
-  BriefcaseBusiness,
   Check,
   ChevronRight,
   FileBadge2,
@@ -15,9 +14,10 @@ import {
   UserRound,
 } from 'lucide-react'
 
-import type { CepLookupResult, PixKeyType } from '@/types'
+import type { CepLookupResult } from '@/types'
 
-type Step = 1 | 2 | 3 | 4
+type Step = 1 | 2 | 3
+type FieldStatus = 'idle' | 'checking' | 'ok' | 'taken' | 'invalid'
 
 type FormState = {
   fullName: string
@@ -26,14 +26,6 @@ type FormState = {
   birthDate: string
   cpf: string
   phone: string
-  bio: string
-  experienceYears: string
-  cnhNumber: string
-  cnhExpiresAt: string
-  detranCredentialNumber: string
-  detranCredentialExpiresAt: string
-  pixKeyType: PixKeyType
-  pixKey: string
   cep: string
   street: string
   number: string
@@ -52,14 +44,6 @@ const INITIAL_FORM: FormState = {
   birthDate: '',
   cpf: '',
   phone: '',
-  bio: '',
-  experienceYears: '',
-  cnhNumber: '',
-  cnhExpiresAt: '',
-  detranCredentialNumber: '',
-  detranCredentialExpiresAt: '',
-  pixKeyType: 'cpf',
-  pixKey: '',
   cep: '',
   street: '',
   number: '',
@@ -69,6 +53,23 @@ const INITIAL_FORM: FormState = {
   latitude: '',
   longitude: '',
   serviceRadiusKm: '5',
+}
+
+function isValidCpf(digits: string): boolean {
+  if (digits.length !== 11) return false
+  if (/^(\d)\1{10}$/.test(digits)) return false
+
+  let sum = 0
+  for (let i = 0; i < 9; i++) sum += parseInt(digits[i]) * (10 - i)
+  let rem = (sum * 10) % 11
+  if (rem === 10 || rem === 11) rem = 0
+  if (rem !== parseInt(digits[9])) return false
+
+  sum = 0
+  for (let i = 0; i < 10; i++) sum += parseInt(digits[i]) * (11 - i)
+  rem = (sum * 10) % 11
+  if (rem === 10 || rem === 11) rem = 0
+  return rem === parseInt(digits[10])
 }
 
 function formatCpf(value: string) {
@@ -100,13 +101,15 @@ export function InstructorSignupForm() {
   const [step, setStep] = useState<Step>(1)
   const [form, setForm] = useState<FormState>(INITIAL_FORM)
   const [photo, setPhoto] = useState<File | null>(null)
-  const [cnhDocument, setCnhDocument] = useState<File | null>(null)
-  const [credentialDocument, setCredentialDocument] = useState<File | null>(null)
+  const [cnhFrontDocument, setCnhFrontDocument] = useState<File | null>(null)
+  const [cnhBackDocument, setCnhBackDocument] = useState<File | null>(null)
   const [cepStatus, setCepStatus] = useState('')
   const [submitError, setSubmitError] = useState('')
   const [submitSuccess, setSubmitSuccess] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isCepPending, startCepTransition] = useTransition()
+  const [cpfStatus, setCpfStatus] = useState<FieldStatus>('idle')
+  const [emailStatus, setEmailStatus] = useState<FieldStatus>('idle')
 
   function updateField<K extends keyof FormState>(field: K, value: FormState[K]) {
     setForm((current) => ({ ...current, [field]: value }))
@@ -114,7 +117,7 @@ export function InstructorSignupForm() {
 
   function goNext() {
     setSubmitError('')
-    setStep((current) => Math.min(current + 1, 4) as Step)
+    setStep((current) => Math.min(current + 1, 3) as Step)
   }
 
   function goBack() {
@@ -123,7 +126,7 @@ export function InstructorSignupForm() {
   }
 
   async function handleSubmit() {
-    if (!stepFourComplete || !photo || !cnhDocument || !credentialDocument) {
+    if (!stepThreeComplete || !photo || !cnhFrontDocument || !cnhBackDocument) {
       return
     }
 
@@ -142,16 +145,16 @@ export function InstructorSignupForm() {
           birthDate: form.birthDate,
           cpf: form.cpf,
           phone: form.phone,
-          bio: form.bio.trim(),
-          experienceYears: form.experienceYears ? Number(form.experienceYears) : null,
+          bio: '',
+          experienceYears: null,
           hourlyRate: null,
           category: null,
-          cnhNumber: form.cnhNumber.trim(),
-          cnhExpiresAt: form.cnhExpiresAt,
-          detranCredentialNumber: form.detranCredentialNumber.trim(),
-          detranCredentialExpiresAt: form.detranCredentialExpiresAt,
-          pixKeyType: form.pixKeyType,
-          pixKey: form.pixKey.trim() || null,
+          cnhNumber: '',
+          cnhExpiresAt: '',
+          detranCredentialNumber: '',
+          detranCredentialExpiresAt: '',
+          pixKeyType: null,
+          pixKey: null,
           cep: form.cep,
           street: form.street.trim(),
           number: form.number.trim(),
@@ -164,8 +167,8 @@ export function InstructorSignupForm() {
         })
       )
       body.append('photo', photo)
-      body.append('cnhDocument', cnhDocument)
-      body.append('credentialDocument', credentialDocument)
+      body.append('cnhFrontDocument', cnhFrontDocument)
+      body.append('cnhBackDocument', cnhBackDocument)
 
       const response = await fetch('/api/auth/signup/instructor', {
         method: 'POST',
@@ -181,7 +184,7 @@ export function InstructorSignupForm() {
       }
 
       setSubmitSuccess(
-        'Cadastro enviado com sucesso. Confirme seu e-mail e aguarde a analise dos documentos pelo administrador.'
+        'Cadastro enviado com sucesso. Confirme seu e-mail e aguarde a análise dos documentos pela plataforma.'
       )
     } catch {
       setSubmitError('Erro inesperado ao enviar o cadastro.')
@@ -227,22 +230,60 @@ export function InstructorSignupForm() {
     })
   }, [form.cep])
 
+  useEffect(() => {
+    const digits = form.cpf.replace(/\D/g, '')
+    if (digits.length !== 11) {
+      setCpfStatus('idle')
+      return
+    }
+    if (!isValidCpf(digits)) {
+      setCpfStatus('invalid')
+      return
+    }
+    setCpfStatus('checking')
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/auth/check-availability?field=cpf&value=${digits}`)
+        const data = await res.json() as { valid: boolean; taken: boolean }
+        setCpfStatus(data.taken ? 'taken' : 'ok')
+      } catch {
+        setCpfStatus('idle')
+      }
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [form.cpf])
+
+  useEffect(() => {
+    const email = form.email.trim()
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setEmailStatus('idle')
+      return
+    }
+    setEmailStatus('checking')
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `/api/auth/check-availability?field=email&value=${encodeURIComponent(email)}`
+        )
+        const data = await res.json() as { taken: boolean }
+        setEmailStatus(data.taken ? 'taken' : 'ok')
+      } catch {
+        setEmailStatus('idle')
+      }
+    }, 600)
+    return () => clearTimeout(timer)
+  }, [form.email])
+
   const stepOneComplete =
     Boolean(form.fullName.trim()) &&
-    Boolean(form.email.trim()) &&
+    emailStatus === 'ok' &&
     form.password.length >= 8 &&
     Boolean(form.birthDate) &&
-    form.cpf.replace(/\D/g, '').length === 11 &&
+    cpfStatus === 'ok' &&
     form.phone.replace(/\D/g, '').length >= 10 &&
     Boolean(photo)
 
   const stepTwoComplete =
-    Boolean(form.cnhNumber.trim()) &&
-    Boolean(form.cnhExpiresAt) &&
-    Boolean(form.detranCredentialNumber.trim()) &&
-    Boolean(form.detranCredentialExpiresAt)
-
-  const stepThreeComplete =
     form.cep.replace(/\D/g, '').length === 8 &&
     Boolean(form.street.trim()) &&
     Boolean(form.number.trim()) &&
@@ -252,7 +293,7 @@ export function InstructorSignupForm() {
     Boolean(form.serviceRadiusKm) &&
     Number(form.serviceRadiusKm) > 0
 
-  const stepFourComplete = Boolean(cnhDocument) && Boolean(credentialDocument)
+  const stepThreeComplete = Boolean(cnhFrontDocument) && Boolean(cnhBackDocument)
 
   if (submitSuccess && !submitError) {
     return (
@@ -303,17 +344,15 @@ export function InstructorSignupForm() {
             Cadastre seu perfil profissional
           </h1>
           <p className="max-w-3xl text-sm leading-6 text-[#64748B]">
-            Fluxo em 4 etapas conforme a documentacao: conta, dados profissionais,
-            localizacao e documentos para analise manual do administrador.
+            Fluxo em 3 etapas: conta, localizacao e documentos para analise manual do administrador.
           </p>
         </div>
 
-        <div className="grid grid-cols-4 gap-2 md:gap-3">
+        <div className="grid grid-cols-3 gap-2 md:gap-3">
           {[
             { id: 1, label: 'Conta', icon: UserRound },
-            { id: 2, label: 'Profissional', icon: BriefcaseBusiness },
-            { id: 3, label: 'Localizacao', icon: MapPin },
-            { id: 4, label: 'Documentos', icon: FileBadge2 },
+            { id: 2, label: 'Localizacao', icon: MapPin },
+            { id: 3, label: 'Documentos', icon: FileBadge2 },
           ].map((item) => (
             <div
               key={item.id}
@@ -379,8 +418,17 @@ export function InstructorSignupForm() {
                 value={form.email}
                 onChange={(event) => updateField('email', event.target.value)}
                 placeholder="seu@email.com"
-                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
+                className={`min-h-11 w-full rounded-[8px] border px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E] ${emailStatus === 'ok' ? 'border-[#3ECF8E]' : emailStatus === 'taken' ? 'border-[#EF4444]' : 'border-[#E2E8F0]'}`}
               />
+              {emailStatus === 'checking' && (
+                <p className="text-xs text-[#64748B]">Verificando e-mail...</p>
+              )}
+              {emailStatus === 'taken' && (
+                <p className="text-xs text-[#EF4444]">E-mail ja cadastrado na plataforma.</p>
+              )}
+              {emailStatus === 'ok' && (
+                <p className="text-xs text-[#3ECF8E]">E-mail disponivel.</p>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -411,8 +459,20 @@ export function InstructorSignupForm() {
                 value={form.cpf}
                 onChange={(event) => updateField('cpf', formatCpf(event.target.value))}
                 placeholder="000.000.000-00"
-                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
+                className={`min-h-11 w-full rounded-[8px] border px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E] ${cpfStatus === 'ok' ? 'border-[#3ECF8E]' : cpfStatus === 'invalid' || cpfStatus === 'taken' ? 'border-[#EF4444]' : 'border-[#E2E8F0]'}`}
               />
+              {cpfStatus === 'checking' && (
+                <p className="text-xs text-[#64748B]">Verificando CPF...</p>
+              )}
+              {cpfStatus === 'invalid' && (
+                <p className="text-xs text-[#EF4444]">CPF invalido.</p>
+              )}
+              {cpfStatus === 'taken' && (
+                <p className="text-xs text-[#EF4444]">CPF ja cadastrado na plataforma.</p>
+              )}
+              {cpfStatus === 'ok' && (
+                <p className="text-xs text-[#3ECF8E]">CPF disponivel.</p>
+              )}
             </div>
 
             <div className="space-y-1.5 md:col-span-2">
@@ -429,104 +489,9 @@ export function InstructorSignupForm() {
         </div>
       )}
 
+      {/* Step Profissional desativado temporariamente — campos movidos para a tela de perfil */}
+
       {step === 2 && (
-        <div className="space-y-6">
-          <section className="grid gap-4 md:grid-cols-2">
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[#0F172A]">Numero da CNH</label>
-              <input
-                value={form.cnhNumber}
-                onChange={(event) => updateField('cnhNumber', event.target.value)}
-                placeholder="Numero da sua CNH"
-                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[#0F172A]">Validade da CNH</label>
-              <input
-                type="date"
-                value={form.cnhExpiresAt}
-                onChange={(event) => updateField('cnhExpiresAt', event.target.value)}
-                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[#0F172A]">Registro DETRAN</label>
-              <input
-                value={form.detranCredentialNumber}
-                onChange={(event) => updateField('detranCredentialNumber', event.target.value)}
-                placeholder="Numero da credencial"
-                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[#0F172A]">Validade da credencial DETRAN</label>
-              <input
-                type="date"
-                value={form.detranCredentialExpiresAt}
-                onChange={(event) => updateField('detranCredentialExpiresAt', event.target.value)}
-                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[#0F172A]">Anos de experiencia</label>
-              <input
-                inputMode="numeric"
-                value={form.experienceYears}
-                onChange={(event) => updateField('experienceYears', event.target.value)}
-                placeholder="Opcional"
-                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-[#0F172A]">Tipo de chave PIX</label>
-              <select
-                value={form.pixKeyType}
-                onChange={(event) => updateField('pixKeyType', event.target.value as PixKeyType)}
-                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] bg-white px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
-              >
-                <option value="cpf">CPF</option>
-                <option value="email">E-mail</option>
-                <option value="phone">Telefone</option>
-                <option value="random">Chave aleatoria</option>
-              </select>
-            </div>
-
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-sm font-medium text-[#0F172A]">Chave PIX</label>
-              <input
-                value={form.pixKey}
-                onChange={(event) => updateField('pixKey', event.target.value)}
-                placeholder="Opcional no cadastro inicial"
-                className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
-              />
-            </div>
-
-            <div className="space-y-1.5 md:col-span-2">
-              <label className="text-sm font-medium text-[#0F172A]">Biografia / apresentacao</label>
-              <textarea
-                rows={4}
-                value={form.bio}
-                onChange={(event) => updateField('bio', event.target.value)}
-                placeholder="Conte sua experiencia, abordagem e especialidades."
-                className="w-full rounded-[8px] border border-[#E2E8F0] px-3 py-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
-              />
-            </div>
-
-            <div className="rounded-[14px] bg-[#F8FAFC] p-4 text-sm leading-6 text-[#64748B] md:col-span-2">
-              Categoria de ensino e valor por aula serao configurados posteriormente, apos a
-              liberacao inicial do cadastro.
-            </div>
-          </section>
-        </div>
-      )}
-
-      {step === 3 && (
         <div className="space-y-6">
           <section className="grid gap-4 md:grid-cols-2">
             <div className="space-y-1.5">
@@ -538,20 +503,6 @@ export function InstructorSignupForm() {
                 placeholder="00000-000"
                 className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none focus:border-[#3ECF8E]"
               />
-            </div>
-
-            <div className="rounded-[14px] bg-[#F8FAFC] p-4">
-              <div className="mb-2 inline-flex items-center gap-2 text-sm font-semibold text-[#0F172A]">
-                <MapPin size={16} className="text-[#3ECF8E]" />
-                Localizacao calculada
-              </div>
-              <div className="text-sm text-[#64748B]">
-                <div>Latitude: {form.latitude || '-'}</div>
-                <div>Longitude: {form.longitude || '-'}</div>
-                <div className="mt-2">
-                  {isCepPending ? 'Buscando CEP...' : cepStatus || 'Informe um CEP valido.'}
-                </div>
-              </div>
             </div>
 
             <div className="space-y-1.5 md:col-span-2">
@@ -618,34 +569,34 @@ export function InstructorSignupForm() {
         </div>
       )}
 
-      {step === 4 && (
+      {step === 3 && (
         <div className="space-y-6">
           <section className="grid gap-4 md:grid-cols-2">
             <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-[14px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC] px-4 text-center">
               <Upload size={18} className="mb-2 text-[#64748B]" />
               <span className="text-sm font-semibold text-[#0F172A]">
-                {fileLabel(cnhDocument, 'Enviar CNH (frente e verso)')}
+                {fileLabel(cnhFrontDocument, 'CNH — Frente')}
               </span>
               <span className="mt-1 text-xs text-[#64748B]">JPG, PNG ou PDF</span>
               <input
                 type="file"
                 accept=".pdf,image/png,image/jpeg,image/jpg"
                 className="hidden"
-                onChange={(event) => setCnhDocument(event.target.files?.[0] ?? null)}
+                onChange={(event) => setCnhFrontDocument(event.target.files?.[0] ?? null)}
               />
             </label>
 
             <label className="flex min-h-32 cursor-pointer flex-col items-center justify-center rounded-[14px] border border-dashed border-[#CBD5E1] bg-[#F8FAFC] px-4 text-center">
               <Upload size={18} className="mb-2 text-[#64748B]" />
               <span className="text-sm font-semibold text-[#0F172A]">
-                {fileLabel(credentialDocument, 'Enviar credencial DETRAN')}
+                {fileLabel(cnhBackDocument, 'CNH — Verso')}
               </span>
               <span className="mt-1 text-xs text-[#64748B]">JPG, PNG ou PDF</span>
               <input
                 type="file"
                 accept=".pdf,image/png,image/jpeg,image/jpg"
                 className="hidden"
-                onChange={(event) => setCredentialDocument(event.target.files?.[0] ?? null)}
+                onChange={(event) => setCnhBackDocument(event.target.files?.[0] ?? null)}
               />
             </label>
           </section>
@@ -677,13 +628,12 @@ export function InstructorSignupForm() {
             </button>
           )}
 
-          {step < 4 ? (
+          {step < 3 ? (
             <button
               type="button"
               disabled={
                 (step === 1 && !stepOneComplete) ||
-                (step === 2 && !stepTwoComplete) ||
-                (step === 3 && !stepThreeComplete)
+                (step === 2 && !stepTwoComplete)
               }
               onClick={goNext}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[8px] px-4 text-sm font-semibold text-[#0F172A] transition-opacity disabled:cursor-not-allowed disabled:opacity-50"
@@ -695,7 +645,7 @@ export function InstructorSignupForm() {
           ) : (
             <button
               type="button"
-              disabled={!stepFourComplete || isSubmitting}
+              disabled={!stepThreeComplete || isSubmitting}
               onClick={() => {
                 void handleSubmit()
               }}

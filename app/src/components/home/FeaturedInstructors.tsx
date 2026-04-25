@@ -26,6 +26,9 @@ const MOCK_INSTRUCTORS: InstructorCardType[] = [
     accepts_night_driving: true,
     accepts_parking_practice: true,
     student_chooses_destination: true,
+    booking_lead_time_hours: 2,
+    latitude: -3.7319,
+    longitude: -38.4967,
     status: 'active',
   },
   {
@@ -49,6 +52,9 @@ const MOCK_INSTRUCTORS: InstructorCardType[] = [
     accepts_night_driving: false,
     accepts_parking_practice: true,
     student_chooses_destination: false,
+    booking_lead_time_hours: 3,
+    latitude: -3.7424,
+    longitude: -38.4912,
     status: 'active',
   },
   {
@@ -72,6 +78,9 @@ const MOCK_INSTRUCTORS: InstructorCardType[] = [
     accepts_night_driving: true,
     accepts_parking_practice: true,
     student_chooses_destination: true,
+    booking_lead_time_hours: 4,
+    latitude: -3.8017,
+    longitude: -38.5707,
     status: 'active',
   },
   {
@@ -95,6 +104,9 @@ const MOCK_INSTRUCTORS: InstructorCardType[] = [
     accepts_night_driving: false,
     accepts_parking_practice: true,
     student_chooses_destination: false,
+    booking_lead_time_hours: 6,
+    latitude: -3.7445,
+    longitude: -38.5361,
     status: 'active',
   },
 ]
