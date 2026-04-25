@@ -229,6 +229,31 @@ function normalizeInstructor(
   }
 }
 
+async function geocodeNeighborhood(
+  neighborhood: string,
+  city: string
+): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const q = encodeURIComponent(`${neighborhood}, ${city}, Ceará, Brasil`)
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`,
+      {
+        headers: { 'User-Agent': 'CNHSimples/1.0 (contato@cnhsimples.com.br)' },
+        next: { revalidate: 86400 },
+      }
+    )
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!Array.isArray(data) || !data[0]) return null
+    const lat = parseFloat(data[0].lat)
+    const lng = parseFloat(data[0].lon)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+    return { lat, lng }
+  } catch {
+    return null
+  }
+}
+
 export async function getInstructorSearchItems(userCoords?: UserCoords | null) {
   const supabase = createAdminClient()
   if (!supabase) return []
@@ -307,7 +332,7 @@ export async function getInstructorSearchItems(userCoords?: UserCoords | null) {
       defaultPlatformSplitRate
     )
 
-    return rawRecords
+    const normalized = rawRecords
       .map((item) => {
         const loc = canonicalLocMap.get(item.id ?? '')
         const merged: RawInstructorRecord = {
@@ -325,6 +350,45 @@ export async function getInstructorSearchItems(userCoords?: UserCoords | null) {
         )
       })
       .filter((item): item is InstructorSearchItem => Boolean(item))
+
+    // Geocode missing coordinates using neighborhood as fallback
+    const withoutCoords = normalized.filter((i) => i.latitude == null && i.neighborhood)
+    if (withoutCoords.length > 0) {
+      const uniqueKeys = [...new Set(withoutCoords.map((i) => `${i.neighborhood}|${i.city}`))]
+      const geocodeResults = await Promise.all(
+        uniqueKeys.map(async (key) => {
+          const [neighbourhood, city] = key.split('|')
+          const coords = await geocodeNeighborhood(neighbourhood, city)
+          return { key, coords }
+        })
+      )
+      const coordByKey = new Map(geocodeResults.map(({ key, coords }) => [key, coords]))
+
+      // Apply tiny jitter so stacked same-location markers don't overlap
+      const jitterCounters = new Map<string, number>()
+      for (const instructor of normalized) {
+        if (instructor.latitude != null) continue
+        const key = `${instructor.neighborhood}|${instructor.city}`
+        const coords = coordByKey.get(key)
+        if (!coords) continue
+        const count = jitterCounters.get(key) ?? 0
+        jitterCounters.set(key, count + 1)
+        const angle = (count * 137.5 * Math.PI) / 180
+        const radius = 0.0008 * Math.ceil(count / 8)
+        instructor.latitude = coords.lat + radius * Math.cos(angle)
+        instructor.longitude = coords.lng + radius * Math.sin(angle)
+        if (userCoords) {
+          instructor.distance_km = haversineKm(
+            userCoords.lat,
+            userCoords.lng,
+            instructor.latitude,
+            instructor.longitude
+          )
+        }
+      }
+    }
+
+    return normalized
   }
 
   return []

@@ -17,6 +17,7 @@ import {
   MessageCircle,
   Search,
   Smartphone,
+  UserRound,
   X,
   XCircle,
 } from 'lucide-react'
@@ -460,6 +461,7 @@ export function StudentHome({ name, photoUrl, bookings }: Props) {
         {[
           { href: '/aluno', icon: CalendarClock, label: 'Minhas aulas' },
           { href: '/buscar', icon: Search, label: 'Buscar' },
+          { href: '/aluno/perfil', icon: UserRound, label: 'Perfil' },
         ].map(({ href, icon: Icon, label }) => {
           const isActive = pathname === href || pendingHref === href
           const isPending = pendingHref === href && pathname !== href

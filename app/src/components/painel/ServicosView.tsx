@@ -26,13 +26,11 @@ import {
 const CATEGORY_LABEL: Record<string, string> = {
   A: 'Cat. A - Moto',
   B: 'Cat. B - Carro',
-  AB: 'Cat. A+B',
 }
 
 const CATEGORY_COLOR: Record<string, { bg: string; text: string }> = {
   A: { bg: '#FEF3C7', text: '#92400E' },
   B: { bg: '#DBEAFE', text: '#1E40AF' },
-  AB: { bg: '#F3E8FF', text: '#6B21A8' },
 }
 
 type Props = {
@@ -132,7 +130,7 @@ const OPTIONS: { key: OptionKey; label: string; hint: string; icon: React.Elemen
 type RangeRow = { from_km: string; to_km: string; price: string }
 
 type FormState = {
-  category: 'A' | 'B' | 'AB' | ''
+  category: 'A' | 'B' | ''
   service_type: 'individual' | 'package'
   lesson_count: string
   price: string
@@ -181,11 +179,13 @@ function serviceToForm(service: InstructorService): FormState {
 function ServiceModal({
   service,
   platformSplitRate,
+  usedCategories,
   onClose,
   onSave,
 }: {
   service: InstructorService | null
   platformSplitRate: number
+  usedCategories: Set<string>
   onClose: () => void
   onSave: (payload: ServicePayload, id?: string) => Promise<void>
 }) {
@@ -267,16 +267,21 @@ function ServiceModal({
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="Categoria CNH">
-            <select
-              value={form.category}
-              onChange={(event) => set('category', event.target.value as FormState['category'])}
-              className={inputClass}
-            >
-              <option value="">Sem categoria</option>
-              <option value="A">A - Moto</option>
-              <option value="B">B - Carro</option>
-              <option value="AB">A+B</option>
-            </select>
+            {service ? (
+              <div className="flex h-[38px] items-center rounded-[8px] border border-[#E2E8F0] px-3 text-sm text-[#0F172A]">
+                {form.category ? CATEGORY_LABEL[form.category] ?? form.category : 'Sem categoria'}
+              </div>
+            ) : (
+              <select
+                value={form.category}
+                onChange={(event) => set('category', event.target.value as FormState['category'])}
+                className={inputClass}
+              >
+                <option value="" disabled>Selecione</option>
+                {!usedCategories.has('A') && <option value="A">A - Moto</option>}
+                {!usedCategories.has('B') && <option value="B">B - Carro</option>}
+              </select>
+            )}
           </Field>
 
           <Field label="Tipo">
@@ -761,6 +766,10 @@ export function ServicosView({
   )
 
   const activeCount = services.filter((service) => service.is_active).length
+  const usedCategories = new Set<string>(
+    services.map((service) => service.category).filter((c) => c != null) as string[]
+  )
+  const canCreateNew = !usedCategories.has('A') || !usedCategories.has('B')
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
@@ -779,7 +788,10 @@ export function ServicosView({
 
           <button
             onClick={() => setModal({ type: 'create' })}
-            className="flex shrink-0 items-center gap-2 rounded-[9999px] bg-[#3ECF8E] px-4 py-2 text-sm font-semibold text-[#0F172A]"
+            disabled={!canCreateNew}
+            className="flex shrink-0 items-center gap-2 rounded-[9999px] px-4 py-2 text-sm font-semibold text-[#0F172A] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            style={{ background: '#3ECF8E' }}
+            title={!canCreateNew ? 'Serviços para categoria A e B já cadastrados' : undefined}
           >
             <Plus size={16} />
             <span className="hidden sm:inline">Novo servico</span>
@@ -818,6 +830,7 @@ export function ServicosView({
         <ServiceModal
           service={modal.type === 'edit' ? modal.service : null}
           platformSplitRate={platformSplitRate}
+          usedCategories={usedCategories}
           onClose={() => setModal(null)}
           onSave={handleUpsert}
         />

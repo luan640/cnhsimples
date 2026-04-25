@@ -81,8 +81,7 @@ export function InstructorMap({ instructors, userCoords, radiusKm }: Props) {
         const initials = instructor.full_name
           .split(' ')
           .slice(0, 2)
-          .map((n) => n[0])
-          .toUpperCase()
+          .map((n) => n[0].toUpperCase())
           .join('')
 
         const avatarHtml = instructor.photo_url

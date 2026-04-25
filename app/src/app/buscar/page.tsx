@@ -9,6 +9,7 @@ import {
   Star,
 } from 'lucide-react'
 
+import { LocationAutocomplete } from '@/components/buscar/LocationAutocomplete'
 import { SearchResultsView } from '@/components/buscar/SearchResultsView'
 import { Footer } from '@/components/layout/Footer'
 import { Navbar } from '@/components/layout/Navbar'
@@ -26,6 +27,7 @@ type SearchPageProps = {
     ordenar?: string | string[]
     raio?: string | string[]
     avaliacao?: string | string[]
+    modo?: string | string[]
   }>
 }
 
@@ -88,6 +90,7 @@ export default async function Page({ searchParams }: SearchPageProps) {
   const sort = getSingleValue(resolvedSearchParams.ordenar) ?? 'relevancia'
   const radius = getSingleValue(resolvedSearchParams.raio) ?? '20'
   const minimumRating = getSingleValue(resolvedSearchParams.avaliacao) ?? '0'
+  const viewMode = getSingleValue(resolvedSearchParams.modo) === 'map' ? 'map' : 'list'
 
   const radiusNumber = Number(radius) || 20
   const ratingNumber = Number(minimumRating) || 0
@@ -157,6 +160,7 @@ export default async function Page({ searchParams }: SearchPageProps) {
     ordenar: sort,
     raio: radius,
     avaliacao: minimumRating,
+    modo: viewMode,
   }
 
   const activeFilters = [
@@ -187,19 +191,19 @@ export default async function Page({ searchParams }: SearchPageProps) {
               </div>
 
               <form action="/buscar" className="grid gap-3 md:grid-cols-[minmax(0,1fr)_170px]">
-                <label
+                <div
                   className="flex min-h-11 items-center gap-3 rounded-[12px] border border-[#E2E8F0] bg-white px-4"
                   style={{ boxShadow: 'var(--shadow-card)' }}
                 >
-                  <MapPin size={18} className="text-[#64748B]" />
-                  <input
-                    type="text"
+                  <MapPin size={18} className="shrink-0 text-[#64748B]" />
+                  <LocationAutocomplete
                     name="q"
                     defaultValue={query}
                     placeholder="Seu CEP ou bairro (ex: 60165-050 ou Meireles)"
-                    className="min-w-0 flex-1 bg-transparent text-sm text-[#0F172A] outline-none placeholder:text-[#94A3B8]"
+                    wrapperClassName="min-w-0 flex-1"
+                    inputClassName="w-full bg-transparent text-sm text-[#0F172A] outline-none placeholder:text-[#94A3B8]"
                   />
-                </label>
+                </div>
 
                 <button
                   type="submit"
@@ -213,6 +217,7 @@ export default async function Page({ searchParams }: SearchPageProps) {
                 <input type="hidden" name="ordenar" value={sort} />
                 <input type="hidden" name="raio" value={radius} />
                 <input type="hidden" name="avaliacao" value={minimumRating} />
+                <input type="hidden" name="modo" value={viewMode} />
               </form>
 
               <div className="flex flex-wrap gap-2 lg:hidden">
@@ -285,21 +290,13 @@ export default async function Page({ searchParams }: SearchPageProps) {
                   <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#64748B]">
                     CEP ou Bairro
                   </label>
-                  <div className="relative">
-                    <MapPin size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
-                    <input
-                      type="text"
-                      name="q"
-                      defaultValue={query}
-                      placeholder="Ex: 60165-050 ou Meireles"
-                      className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] py-2 pl-9 pr-3 text-sm text-[#0F172A] outline-none transition-colors focus:border-[#3ECF8E]"
-                    />
-                  </div>
-                  {userCoords && (
-                    <p className="text-[11px] text-[#3ECF8E]">
-                      ✓ Localização encontrada — mostrando instrutores próximos
-                    </p>
-                  )}
+                  <LocationAutocomplete
+                    name="q"
+                    defaultValue={query}
+                    placeholder="Ex: 60165-050 ou Meireles"
+                    showIcon
+                    inputClassName="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] py-2 pl-9 pr-3 text-sm text-[#0F172A] outline-none transition-colors focus:border-[#3ECF8E]"
+                  />
                 </div>
 
                 <div className="space-y-2">
@@ -314,7 +311,6 @@ export default async function Page({ searchParams }: SearchPageProps) {
                     <option value="">Todas</option>
                     <option value="A">Categoria A — Moto</option>
                     <option value="B">Categoria B — Carro</option>
-                    <option value="AB">A + B</option>
                   </select>
                 </div>
 
@@ -365,6 +361,8 @@ export default async function Page({ searchParams }: SearchPageProps) {
                   </select>
                 </div>
 
+                <input type="hidden" name="modo" value={viewMode} />
+
                 <div className="flex flex-col gap-2 pt-2">
                   <button
                     type="submit"
@@ -404,6 +402,7 @@ export default async function Page({ searchParams }: SearchPageProps) {
                   <input type="hidden" name="categoria" value={category} />
                   <input type="hidden" name="raio" value={radius} />
                   <input type="hidden" name="avaliacao" value={minimumRating} />
+                  <input type="hidden" name="modo" value={viewMode} />
                   <label className="text-sm font-medium text-[#475569]">Ordenar</label>
                   <div className="relative">
                     <select
@@ -441,6 +440,9 @@ export default async function Page({ searchParams }: SearchPageProps) {
               instructors={filteredInstructors}
               userCoords={userCoords}
               radiusKm={radiusNumber}
+              viewMode={viewMode}
+              listHref={buildHref({ modo: 'list' }, currentEntries)}
+              mapHref={buildHref({ modo: 'map' }, currentEntries)}
             />
           </div>
         </section>
