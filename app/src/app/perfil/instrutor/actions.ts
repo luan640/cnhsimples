@@ -35,7 +35,7 @@ async function getCurrentInstructorContext() {
   const admin = createAdminClient()
   const { data: profile, error } = await admin
     .from('instructor_profiles')
-    .select('user_id, photo_url, cnh_number, detran_credential_number, accepts_highway, accepts_night_driving, accepts_parking_practice, student_chooses_destination')
+    .select('user_id, photo_url, cnh_number, detran_credential_number, accepts_highway, accepts_night_driving, accepts_parking_practice, student_chooses_destination, booking_lead_time_hours')
     .eq('user_id', user.id)
     .maybeSingle()
 
@@ -238,6 +238,14 @@ export async function updateInstructorPreferencesAction(formData: FormData) {
     const acceptsNightDriving = formData.get('acceptsNightDriving') === 'true'
     const acceptsParkingPractice = formData.get('acceptsParkingPractice') === 'true'
     const studentChoosesDestination = formData.get('studentChoosesDestination') === 'true'
+    const leadTimeRaw = String(
+      formData.get('bookingLeadTimeHours') ?? formData.get('booking_lead_time_hours') ?? ''
+    ).trim()
+    const parsedLeadTime = Number(leadTimeRaw)
+    const bookingLeadTimeHours =
+      leadTimeRaw.length > 0 && Number.isFinite(parsedLeadTime)
+        ? Math.min(24, Math.max(0, Math.round(parsedLeadTime)))
+        : 2
 
     const { error: dbError } = await admin
       .from('instructor_profiles')
@@ -246,6 +254,7 @@ export async function updateInstructorPreferencesAction(formData: FormData) {
         accepts_night_driving: acceptsNightDriving,
         accepts_parking_practice: acceptsParkingPractice,
         student_chooses_destination: studentChoosesDestination,
+        booking_lead_time_hours: bookingLeadTimeHours,
       })
       .eq('user_id', user.id)
 
@@ -260,6 +269,7 @@ export async function updateInstructorPreferencesAction(formData: FormData) {
         accepts_night_driving: acceptsNightDriving,
         accepts_parking_practice: acceptsParkingPractice,
         student_chooses_destination: studentChoosesDestination,
+        booking_lead_time_hours: bookingLeadTimeHours,
       },
     })
 

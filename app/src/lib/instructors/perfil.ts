@@ -30,6 +30,7 @@ export type InstructorFullProfile = {
   accepts_night_driving: boolean
   accepts_parking_practice: boolean
   student_chooses_destination: boolean
+  booking_lead_time_hours: number
   pix_key_type: string | null
   pix_key: string | null
   rating: number
@@ -47,7 +48,7 @@ export async function getInstructorFullProfile(userId: string): Promise<Instruct
       hourly_rate, experience_years, category,
       cnh_number, cnh_expires_at, detran_credential_number, detran_credential_expires_at,
       cep, street, number, neighborhood, city, state, latitude, longitude, service_radius_km,
-      accepts_highway, accepts_night_driving, accepts_parking_practice, student_chooses_destination,
+      accepts_highway, accepts_night_driving, accepts_parking_practice, student_chooses_destination, booking_lead_time_hours,
       pix_key_type, pix_key, rating, status
     `)
     .eq('user_id', userId)
@@ -84,6 +85,9 @@ export async function getInstructorFullProfile(userId: string): Promise<Instruct
     accepts_night_driving: data.accepts_night_driving ?? false,
     accepts_parking_practice: data.accepts_parking_practice ?? false,
     student_chooses_destination: data.student_chooses_destination ?? false,
+    booking_lead_time_hours: Number.isFinite(Number(data.booking_lead_time_hours))
+      ? Math.min(24, Math.max(0, Number(data.booking_lead_time_hours)))
+      : 2,
     pix_key_type: data.pix_key_type ?? null,
     pix_key: data.pix_key ?? null,
     rating: Number(data.rating ?? 0),

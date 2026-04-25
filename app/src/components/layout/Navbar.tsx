@@ -118,7 +118,7 @@ export function Navbar() {
                 Seja Instrutor
               </Link>
               <Link
-                href="/login"
+                href="/login/aluno"
                 className="text-sm font-medium px-4 py-2 rounded-[6px] transition-colors"
                 style={{ background: '#3ECF8E', color: '#0F172A' }}
               >
@@ -140,7 +140,7 @@ export function Navbar() {
             </Link>
           ) : (
             <Link
-              href="/login"
+              href="/login/aluno"
               className="text-sm font-medium px-3 py-1.5 rounded-[6px]"
               style={{ background: '#3ECF8E', color: '#0F172A' }}
             >

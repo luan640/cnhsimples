@@ -1,8 +1,14 @@
-import crypto from 'node:crypto'
+﻿import crypto from 'node:crypto'
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getMercadoPagoPaymentClient } from '@/lib/mercadopago/client'
 import { getRevenueSplitConfig } from '@/lib/revenue-split'
+
+const BOOKING_TIMEZONE = 'America/Fortaleza'
+const DEFAULT_BOOKING_LEAD_TIME_HOURS = 2
+
+// Fixed owner_id for the single platform wallet row
+const PLATFORM_WALLET_OWNER_ID = '00000000-0000-0000-0000-000000000001'
 
 export type CreateBookingPaymentParams = {
   studentId: string
@@ -41,6 +47,70 @@ function round2(n: number) {
   return Math.round(n * 100) / 100
 }
 
+function normalizePaymentAmount(value: number) {
+  if (!Number.isFinite(value)) return null
+  const normalized = round2(value)
+  return normalized > 0 ? normalized : null
+}
+
+function normalizeLeadTimeHours(value: unknown): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return DEFAULT_BOOKING_LEAD_TIME_HOURS
+  return Math.min(24, Math.max(0, Math.round(parsed)))
+}
+
+function getNowInBookingTimezoneParts() {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BOOKING_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+  const parts = formatter.formatToParts(new Date())
+  const getPart = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value ?? '0')
+
+  return {
+    year: getPart('year'),
+    month: getPart('month'),
+    day: getPart('day'),
+    hour: getPart('hour'),
+    minute: getPart('minute'),
+  }
+}
+
+function toTimelineValue(date: string, hour: number, minute: number) {
+  const [year, month, day] = date.split('-').map(Number)
+  if (!year || !month || !day) return Number.NaN
+  return Date.UTC(year, month - 1, day, hour, minute, 0, 0)
+}
+
+function assertSlotsRespectLeadTime(
+  slots: Array<{ date: string; hour: number; minute: number | null }>,
+  leadTimeHours: number
+) {
+  const now = getNowInBookingTimezoneParts()
+  const threshold =
+    Date.UTC(now.year, now.month - 1, now.day, now.hour, now.minute, 0, 0) +
+    leadTimeHours * 60 * 60 * 1000
+
+  const hasInvalidSlot = slots.some((slot) => {
+    const slotTimeline = toTimelineValue(slot.date, slot.hour, slot.minute ?? 0)
+    return !Number.isFinite(slotTimeline) || slotTimeline < threshold
+  })
+
+  if (hasInvalidSlot) {
+    throw new Error(
+      leadTimeHours > 0
+        ? `Um ou mais horarios estao fora da antecedencia minima de ${leadTimeHours}h. Atualize a pagina e selecione novos horarios.`
+        : 'Um ou mais horarios selecionados ja passaram. Atualize a pagina e selecione novos horarios.'
+    )
+  }
+}
+
 async function getSlotsForCheckout(params: { instructorId: string; slotIds: string[] }) {
   const admin = createAdminClient()
   const uniqueSlotIds = Array.from(new Set(params.slotIds))
@@ -50,15 +120,15 @@ async function getSlotsForCheckout(params: { instructorId: string; slotIds: stri
     .select('id, date, hour, minute, status, instructor_id')
     .in('id', uniqueSlotIds)
 
-  if (error) throw new Error('Erro ao verificar disponibilidade dos horários.')
+  if (error) throw new Error('Erro ao verificar disponibilidade dos horÃ¡rios.')
   if (!slots || slots.length !== uniqueSlotIds.length) {
-    throw new Error('Um ou mais horários não foram encontrados.')
+    throw new Error('Um ou mais horÃ¡rios nÃ£o foram encontrados.')
   }
   if (slots.some((slot) => slot.instructor_id !== params.instructorId)) {
-    throw new Error('Horários inválidos para este instrutor.')
+    throw new Error('HorÃ¡rios invÃ¡lidos para este instrutor.')
   }
   if (slots.some((slot) => slot.status !== 'available')) {
-    throw new Error('Um ou mais horários não estão mais disponíveis. Atualize a página e tente novamente.')
+    throw new Error('Um ou mais horÃ¡rios nÃ£o estÃ£o mais disponÃ­veis. Atualize a pÃ¡gina e tente novamente.')
   }
 
   return slots
@@ -133,19 +203,24 @@ export async function createBookingGroupPayment(
   const admin = createAdminClient()
   const paymentClient = getMercadoPagoPaymentClient()
   const uniqueSlotIds = Array.from(new Set(params.slotIds))
+  const normalizedTotalAmount = normalizePaymentAmount(params.totalAmount)
 
-  if (uniqueSlotIds.length === 0) throw new Error('Selecione pelo menos um horário.')
+  if (uniqueSlotIds.length === 0) throw new Error('Selecione pelo menos um horÃ¡rio.')
+
+  if (normalizedTotalAmount == null) throw new Error('Valor total invalido.')
 
   const { data: instructor, error: instructorError } = await admin
     .from('instructor_profiles')
-    .select('id, status, full_name')
+    .select('id, status, full_name, booking_lead_time_hours')
     .eq('id', params.instructorId)
     .single()
 
-  if (instructorError || !instructor) throw new Error('Instrutor não encontrado.')
-  if (instructor.status !== 'active') throw new Error('Instrutor não está ativo na plataforma.')
+  if (instructorError || !instructor) throw new Error('Instrutor nÃ£o encontrado.')
+  if (instructor.status !== 'active') throw new Error('Instrutor nÃ£o estÃ¡ ativo na plataforma.')
 
-  await getSlotsForCheckout({ instructorId: params.instructorId, slotIds: uniqueSlotIds })
+  const slots = await getSlotsForCheckout({ instructorId: params.instructorId, slotIds: uniqueSlotIds })
+  const bookingLeadTimeHours = normalizeLeadTimeHours(instructor.booking_lead_time_hours)
+  assertSlotsRespectLeadTime(slots, bookingLeadTimeHours)
 
   if (params.paymentMethod === 'pix') {
     const existingPixPayment = await reuseExistingPendingPixPayment({
@@ -159,8 +234,8 @@ export async function createBookingGroupPayment(
   }
 
   const splitConfig = await getRevenueSplitConfig(params.instructorId)
-  const platformAmount = round2(params.totalAmount * splitConfig.platformSplitRate)
-  const instructorAmount = round2(params.totalAmount * splitConfig.instructorSplitRate)
+  const platformAmount = round2(normalizedTotalAmount * splitConfig.platformSplitRate)
+  const instructorAmount = round2(normalizedTotalAmount * splitConfig.instructorSplitRate)
 
   const { data: bookingGroup, error: bgError } = await admin
     .from('booking_groups')
@@ -172,7 +247,7 @@ export async function createBookingGroupPayment(
       lesson_mode: params.lessonMode,
       payment_method: params.paymentMethod,
       total_lessons: uniqueSlotIds.length,
-      total_amount: params.totalAmount,
+      total_amount: normalizedTotalAmount,
       platform_amount: platformAmount,
       instructor_amount: instructorAmount,
       status: 'pending',
@@ -193,8 +268,8 @@ export async function createBookingGroupPayment(
     if (params.paymentMethod === 'pix') {
       mpPayment = await paymentClient.create({
         body: {
-          transaction_amount: params.totalAmount,
-          description: `Aulas de direção — ${instructor.full_name}`,
+          transaction_amount: normalizedTotalAmount,
+          description: `Aulas de direÃ§Ã£o â€” ${instructor.full_name}`,
           payment_method_id: 'pix',
           external_reference: externalReference,
           payer: {
@@ -210,13 +285,13 @@ export async function createBookingGroupPayment(
       })
     } else if (params.paymentMethod === 'card') {
       if (!params.cardToken || !params.cardPaymentMethodId) {
-        throw new Error('Token do cartão não fornecido.')
+        throw new Error('Token do cartÃ£o nÃ£o fornecido.')
       }
 
       mpPayment = await paymentClient.create({
         body: {
-          transaction_amount: params.totalAmount,
-          description: `Aulas de direção — ${instructor.full_name}`,
+          transaction_amount: normalizedTotalAmount,
+          description: `Aulas de direÃ§Ã£o â€” ${instructor.full_name}`,
           payment_method_id: params.cardPaymentMethodId,
           token: params.cardToken,
           installments: params.cardInstallments ?? 1,
@@ -236,7 +311,7 @@ export async function createBookingGroupPayment(
         requestOptions: { idempotencyKey },
       })
     } else {
-      throw new Error('Método de pagamento inválido.')
+      throw new Error('MÃ©todo de pagamento invÃ¡lido.')
     }
 
     const mpStatus = typeof mpPayment.status === 'string' ? mpPayment.status : 'pending'
@@ -246,7 +321,7 @@ export async function createBookingGroupPayment(
       .from('payments')
       .insert({
         booking_group_id: bookingGroupId,
-        total_amount: params.totalAmount,
+        total_amount: normalizedTotalAmount,
         platform_amount: platformAmount,
         instructor_amount: instructorAmount,
         status: mpStatus === 'approved' ? 'approved' : 'pending',
@@ -291,6 +366,115 @@ export async function createBookingGroupPayment(
   }
 }
 
+async function creditWallet(
+  admin: ReturnType<typeof createAdminClient>,
+  ownerId: string,
+  ownerType: 'instructor' | 'platform',
+  amount: number,
+  description: string,
+  referenceId: string
+): Promise<void> {
+  // Tenta ler carteira existente
+  let { data: wallet, error: selectError } = await admin
+    .from('wallets')
+    .select('id, balance')
+    .eq('owner_id', ownerId)
+    .eq('owner_type', ownerType)
+    .maybeSingle()
+
+  if (selectError) {
+    throw new Error(`Falha ao buscar carteira (${ownerType}): ${selectError.message}`)
+  }
+
+  if (!wallet) {
+    // Cria carteira com saldo zero; em caso de race condition (unique violation), relê
+    const { data: created, error: insertError } = await admin
+      .from('wallets')
+      .insert({ owner_id: ownerId, owner_type: ownerType, balance: 0 })
+      .select('id, balance')
+      .single()
+
+    if (insertError) {
+      // Outra instância pode ter criado simultaneamente — relê
+      const { data: refetched, error: refetchError } = await admin
+        .from('wallets')
+        .select('id, balance')
+        .eq('owner_id', ownerId)
+        .eq('owner_type', ownerType)
+        .single()
+      if (refetchError || !refetched) {
+        throw new Error(`Falha ao criar/reler carteira (${ownerType}): ${insertError.message}`)
+      }
+      wallet = refetched
+    } else {
+      wallet = created
+    }
+  }
+
+  // Incrementa saldo com o valor atual lido (sem resetar)
+  const { error: updateError } = await admin
+    .from('wallets')
+    .update({ balance: round2(Number(wallet.balance) + amount) })
+    .eq('id', wallet.id)
+
+  if (updateError) {
+    throw new Error(`Falha ao atualizar saldo (${ownerType}): ${updateError.message}`)
+  }
+
+  const { error: txError } = await admin.from('wallet_transactions').insert({
+    wallet_id: wallet.id,
+    type: 'credit',
+    amount,
+    description,
+    reference_id: referenceId,
+  })
+
+  if (txError) {
+    throw new Error(`Falha ao registrar transação (${ownerType}): ${txError.message}`)
+  }
+}
+
+// Credita as carteiras de um booking group já pago, de forma idempotente.
+// Seguro para chamar múltiplas vezes — verifica se já foi creditado.
+async function ensureWalletsCredited(
+  admin: ReturnType<typeof createAdminClient>,
+  bookingGroupId: string,
+  instructorId: string,
+  instructorAmount: number,
+  platformAmount: number,
+  slotCount: number
+): Promise<void> {
+  // Idempotência: pula se já existe qualquer crédito para este booking group
+  const { data: existing } = await admin
+    .from('wallet_transactions')
+    .select('id')
+    .eq('reference_id', bookingGroupId)
+    .eq('type', 'credit')
+    .limit(1)
+    .maybeSingle()
+
+  if (existing) return
+
+  const label = slotCount === 1
+    ? 'Aula agendada — pagamento recebido'
+    : `${slotCount} aulas agendadas — pagamento recebido`
+
+  if (instructorAmount > 0) {
+    await creditWallet(admin, instructorId, 'instructor', instructorAmount, label, bookingGroupId)
+  }
+
+  if (platformAmount > 0) {
+    await creditWallet(
+      admin,
+      PLATFORM_WALLET_OWNER_ID,
+      'platform',
+      platformAmount,
+      slotCount === 1 ? 'Comissão — aula agendada' : `Comissão — ${slotCount} aulas agendadas`,
+      bookingGroupId
+    )
+  }
+}
+
 export async function confirmBookingGroupPayment(
   bookingGroupId: string,
   mpPaymentId: string
@@ -300,7 +484,7 @@ export async function confirmBookingGroupPayment(
   const { data: bookingGroup, error: bgError } = await admin
     .from('booking_groups')
     .select(
-      'id, student_id, instructor_id, service_id, lesson_mode, total_amount, platform_amount, instructor_amount, slot_ids'
+      'id, status, student_id, instructor_id, service_id, lesson_mode, total_amount, platform_amount, instructor_amount, slot_ids'
     )
     .eq('id', bookingGroupId)
     .single()
@@ -315,6 +499,15 @@ export async function confirmBookingGroupPayment(
 
   if (slotIds.length === 0) {
     throw new Error('Grupo de agendamento sem horários vinculados.')
+  }
+
+  const instructorAmount = round2(Number(bookingGroup.instructor_amount))
+  const platformAmount = round2(Number(bookingGroup.platform_amount))
+
+  // Booking group já estava pago — apenas garante crédito nas carteiras (idempotente)
+  if (bookingGroup.status === 'paid') {
+    await ensureWalletsCredited(admin, bookingGroupId, bookingGroup.instructor_id, instructorAmount, platformAmount, slotIds.length)
+    return
   }
 
   const slots = await getSlotsForCheckout({
@@ -376,6 +569,8 @@ export async function confirmBookingGroupPayment(
       })
       .eq('booking_group_id', bookingGroupId),
   ])
+
+  await ensureWalletsCredited(admin, bookingGroupId, bookingGroup.instructor_id, instructorAmount, platformAmount, slotIds.length)
 }
 
 export async function cancelBookingGroupPayment(bookingGroupId: string): Promise<void> {
@@ -436,7 +631,7 @@ export async function processBookingPaymentWebhook(
 
   if (!targetPayment?.booking_group_id) {
     throw new Error(
-      `Pagamento de agendamento não encontrado: external_reference=${externalReference}, mp_payment_id=${mpPaymentId}`
+      `Pagamento de agendamento nÃ£o encontrado: external_reference=${externalReference}, mp_payment_id=${mpPaymentId}`
     )
   }
 
@@ -471,12 +666,17 @@ export async function getBookingGroupStatus(
     .maybeSingle()
 
   if (!bookingGroup) return null
-  if (
-    bookingGroup.status === 'paid' ||
-    bookingGroup.status === 'cancelled' ||
-    bookingGroup.status === 'expired'
-  ) {
+  if (bookingGroup.status === 'cancelled' || bookingGroup.status === 'expired') {
     return { status: bookingGroup.status }
+  }
+  // Se já está pago, garante crédito nas carteiras (recupera falhas anteriores) e retorna
+  if (bookingGroup.status === 'paid') {
+    try {
+      await confirmBookingGroupPayment(bookingGroupId, '')
+    } catch {
+      // Idempotência — ignora erros aqui; o crédito já pode ter sido feito
+    }
+    return { status: 'paid' }
   }
 
   const { data: paymentRow } = await admin
@@ -518,3 +718,4 @@ export async function getBookingGroupStatus(
 
   return { status: bookingGroup.status }
 }
+

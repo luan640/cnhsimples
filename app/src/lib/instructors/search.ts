@@ -3,9 +3,11 @@ import { createClient } from '@supabase/supabase-js'
 import type { CNHCategory, InstructorCard } from '@/types'
 import { FALLBACK_PLATFORM_SPLIT_RATE, studentPriceFromInstructorAmount } from '@/lib/revenue-split'
 
-type InstructorSearchItem = InstructorCard & {
+export type InstructorSearchItem = InstructorCard & {
   lesson_goals: string[]
 }
+
+type UserCoords = { lat: number; lng: number }
 
 type CanonicalInstructorPricing = {
   hourly_rate?: number | string | null
@@ -43,6 +45,10 @@ type RawInstructorRecord = {
   student_chooses_destination?: boolean | null
   lesson_goals?: string[] | null
   goals?: string[] | null
+  latitude?: number | string | null
+  longitude?: number | string | null
+  booking_lead_time_hours?: number | string | null
+  service_radius_km?: number | string | null
 }
 
 type RawIndividualServiceRecord = {
@@ -62,15 +68,10 @@ function createAdminClient() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 
-  if (!url || !key) {
-    return null
-  }
+  if (!url || !key) return null
 
   return createClient(url, key, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-    },
+    auth: { persistSession: false, autoRefreshToken: false },
   })
 }
 
@@ -85,10 +86,26 @@ function toNumber(value: number | string | null | undefined, fallback = 0) {
 
 function toCategory(value?: string | null): 'A' | 'B' | 'AB' {
   const normalized = (value ?? 'B').toUpperCase()
-  if (normalized === 'A' || normalized === 'B' || normalized === 'AB') {
-    return normalized
-  }
+  if (normalized === 'A' || normalized === 'B' || normalized === 'AB') return normalized
   return 'B'
+}
+
+function toRate(value: number | string | null | undefined, fallback: number) {
+  if (value == null) return fallback
+  const n = typeof value === 'number' ? value : Number(value)
+  if (!Number.isFinite(n) || n < 0 || n >= 1) return fallback
+  return n
+}
+
+function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 6371
+  const toRad = (v: number) => (v * Math.PI) / 180
+  const dLat = toRad(lat2 - lat1)
+  const dLng = toRad(lng2 - lng1)
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
 }
 
 function buildIndividualPriceMap(
@@ -106,12 +123,9 @@ function buildIndividualPriceMap(
       platformSplitRateByInstructor.get(instructorId) ?? defaultPlatformSplitRate
     const price = studentPriceFromInstructorAmount(basePrice, platformSplitRate)
 
-    if (!instructorId || !category || price <= 0) {
-      continue
-    }
+    if (!instructorId || !category || price <= 0) continue
 
     const current = pricesByInstructor.get(instructorId) ?? {}
-
     if (current[category] == null) {
       current[category] = price
       pricesByInstructor.set(instructorId, current)
@@ -121,20 +135,12 @@ function buildIndividualPriceMap(
   return pricesByInstructor
 }
 
-function toRate(value: number | string | null | undefined, fallback: number) {
-  if (value == null) return fallback
-  const n = typeof value === 'number' ? value : Number(value)
-  if (!Number.isFinite(n) || n < 0 || n >= 1) return fallback
-  return n
-}
-
 function buildPlatformSplitMap(records: RawInstructorRecord[], defaultPlatformSplitRate: number) {
   const ratesByInstructor = new Map<string, number>()
 
   for (const record of records) {
     const id = record.id ?? record.user_id
     if (!id) continue
-
     const customRate = toRate(record.platform_split_rate, defaultPlatformSplitRate)
     ratesByInstructor.set(id, customRate)
   }
@@ -146,14 +152,13 @@ function normalizeInstructor(
   record: RawInstructorRecord,
   canonicalPricing: CanonicalInstructorPricing | null,
   individualPricesByInstructor: Map<string, Partial<Record<CNHCategory, number>>>,
-  defaultPlatformSplitRate: number
+  defaultPlatformSplitRate: number,
+  userCoords: UserCoords | null
 ): InstructorSearchItem | null {
   const id = record.id ?? record.user_id
   const fullName = record.full_name ?? record.name
 
-  if (!id || !fullName) {
-    return null
-  }
+  if (!id || !fullName) return null
 
   const rating = toNumber(record.rating, 0)
   const reviewCount = toNumber(record.review_count ?? record.reviews_count, 0)
@@ -169,10 +174,23 @@ function normalizeInstructor(
     platformSplitRate
   )
   const hourlyRate =
-    individualPrices.A ??
-    individualPrices.B ??
-    individualPrices.AB ??
-    fallbackHourlyRate
+    individualPrices.A ?? individualPrices.B ?? individualPrices.AB ?? fallbackHourlyRate
+
+  // Calculate distance from user location if both sets of coords are available
+  let distanceKm: number | undefined
+  const instructorLat = toNumber(record.latitude, NaN)
+  const instructorLng = toNumber(record.longitude, NaN)
+  const hasValidCoords =
+    Number.isFinite(instructorLat) &&
+    Number.isFinite(instructorLng) &&
+    instructorLat !== 0 &&
+    instructorLng !== 0
+
+  if (userCoords && hasValidCoords) {
+    distanceKm = haversineKm(userCoords.lat, userCoords.lng, instructorLat, instructorLng)
+  } else if (record.distance_km != null) {
+    distanceKm = toNumber(record.distance_km)
+  }
 
   return {
     id,
@@ -186,7 +204,7 @@ function normalizeInstructor(
     review_count: reviewCount,
     lesson_count: lessonCount,
     student_count: studentCount,
-    distance_km: record.distance_km == null ? undefined : toNumber(record.distance_km),
+    distance_km: distanceKm,
     is_super_instructor: rating >= 4.8 && lessonCount >= 50,
     is_new: reviewCount === 0 || lessonCount < 20,
     is_trending: lessonCount >= 5 && lessonCount < 40,
@@ -196,6 +214,9 @@ function normalizeInstructor(
     accepts_night_driving: record.accepts_night_driving ?? false,
     accepts_parking_practice: record.accepts_parking_practice ?? false,
     student_chooses_destination: record.student_chooses_destination ?? false,
+    booking_lead_time_hours: toNumber(record.booking_lead_time_hours, 2),
+    latitude: hasValidCoords ? instructorLat : null,
+    longitude: hasValidCoords ? instructorLng : null,
     status:
       record.status === 'pending' ||
       record.status === 'docs_rejected' ||
@@ -208,21 +229,15 @@ function normalizeInstructor(
   }
 }
 
-export async function getInstructorSearchItems() {
+export async function getInstructorSearchItems(userCoords?: UserCoords | null) {
   const supabase = createAdminClient()
-
-  if (!supabase) {
-    return []
-  }
+  if (!supabase) return []
 
   for (const table of TABLE_CANDIDATES) {
     const { data, error } = await supabase.from(table).select('*').limit(100)
 
     if (error) {
-      if (error.code === 'PGRST205' || error.code === '42P01') {
-        continue
-      }
-
+      if (error.code === 'PGRST205' || error.code === '42P01') continue
       console.error(`[buscar] Supabase query failed for ${table}:`, error.message)
       continue
     }
@@ -254,16 +269,25 @@ export async function getInstructorSearchItems() {
       instructorIds.length > 0
         ? await supabase
             .from('instructor_profiles')
-            .select('id, hourly_rate, platform_split_rate')
+            .select('id, hourly_rate, platform_split_rate, latitude, longitude, booking_lead_time_hours')
             .in('id', instructorIds)
-        : { data: [] as { id: string; hourly_rate?: number | string | null; platform_split_rate?: number | string | null }[] }
+        : { data: [] as { id: string; hourly_rate?: number | string | null; platform_split_rate?: number | string | null; latitude?: number | null; longitude?: number | null; booking_lead_time_hours?: number | null }[] }
 
     const canonicalPricingMap = new Map<string, CanonicalInstructorPricing>(
       (canonicalPricingRows ?? []).map((row) => [
         row.id,
+        { hourly_rate: row.hourly_rate, platform_split_rate: row.platform_split_rate },
+      ])
+    )
+
+    // Merge canonical lat/lng into raw records so normalizeInstructor can use them
+    const canonicalLocMap = new Map(
+      (canonicalPricingRows ?? []).map((row) => [
+        row.id,
         {
-          hourly_rate: row.hourly_rate,
-          platform_split_rate: row.platform_split_rate,
+          latitude: row.latitude,
+          longitude: row.longitude,
+          booking_lead_time_hours: row.booking_lead_time_hours,
         },
       ])
     )
@@ -284,14 +308,22 @@ export async function getInstructorSearchItems() {
     )
 
     return rawRecords
-      .map((item) =>
-        normalizeInstructor(
-          item,
+      .map((item) => {
+        const loc = canonicalLocMap.get(item.id ?? '')
+        const merged: RawInstructorRecord = {
+          ...item,
+          latitude: item.latitude ?? loc?.latitude,
+          longitude: item.longitude ?? loc?.longitude,
+          booking_lead_time_hours: item.booking_lead_time_hours ?? loc?.booking_lead_time_hours,
+        }
+        return normalizeInstructor(
+          merged,
           canonicalPricingMap.get(item.id ?? '') ?? null,
           individualPricesByInstructor,
-          defaultPlatformSplitRate
+          defaultPlatformSplitRate,
+          userCoords ?? null
         )
-      )
+      })
       .filter((item): item is InstructorSearchItem => Boolean(item))
   }
 

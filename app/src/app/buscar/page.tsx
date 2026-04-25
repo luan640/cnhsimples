@@ -5,13 +5,11 @@ import {
   Car,
   ChevronDown,
   MapPin,
-  Search,
   SlidersHorizontal,
   Star,
-  Target,
 } from 'lucide-react'
 
-import { SearchResultCard } from '@/components/buscar/SearchResultCard'
+import { SearchResultsView } from '@/components/buscar/SearchResultsView'
 import { Footer } from '@/components/layout/Footer'
 import { Navbar } from '@/components/layout/Navbar'
 import { getInstructorSearchItems } from '@/lib/instructors/search'
@@ -28,7 +26,6 @@ type SearchPageProps = {
     ordenar?: string | string[]
     raio?: string | string[]
     avaliacao?: string | string[]
-    objetivo?: string | string[]
   }>
 }
 
@@ -41,48 +38,79 @@ function buildHref(
   currentEntries: Record<string, string>
 ) {
   const params = new URLSearchParams()
-
   for (const [key, value] of Object.entries(currentEntries)) {
     if (value) params.set(key, value)
   }
-
   for (const [key, value] of Object.entries(nextEntries)) {
-    if (!value) {
-      params.delete(key)
-      continue
-    }
-
+    if (!value) { params.delete(key); continue }
     params.set(key, value)
   }
-
   const query = params.toString()
   return query ? `/buscar?${query}` : '/buscar'
 }
 
+async function resolveQueryToCoords(q: string): Promise<{ lat: number; lng: number } | null> {
+  const trimmed = q.trim()
+  if (!trimmed) return null
+
+  const digits = trimmed.replace(/\D/g, '')
+  let url: string
+
+  if (digits.length === 8) {
+    url = `https://nominatim.openstreetmap.org/search?postalcode=${digits}&country=Brazil&format=json&limit=1`
+  } else {
+    const encoded = encodeURIComponent(`${trimmed}, Fortaleza, Ceará, Brasil`)
+    url = `https://nominatim.openstreetmap.org/search?q=${encoded}&format=json&limit=1`
+  }
+
+  try {
+    const res = await fetch(url, {
+      headers: { 'User-Agent': 'CNHSimples/1.0 (contato@cnhsimples.com.br)' },
+      next: { revalidate: 3600 },
+    })
+    if (!res.ok) return null
+    const data = await res.json()
+    if (!Array.isArray(data) || !data[0]) return null
+    const lat = parseFloat(data[0].lat)
+    const lng = parseFloat(data[0].lon)
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+    return { lat, lng }
+  } catch {
+    return null
+  }
+}
+
 export default async function Page({ searchParams }: SearchPageProps) {
   const resolvedSearchParams = await searchParams
-  const instructors = await getInstructorSearchItems()
 
   const query = getSingleValue(resolvedSearchParams.q)?.trim() ?? ''
   const category = getSingleValue(resolvedSearchParams.categoria)?.toUpperCase() ?? ''
   const sort = getSingleValue(resolvedSearchParams.ordenar) ?? 'relevancia'
   const radius = getSingleValue(resolvedSearchParams.raio) ?? '20'
   const minimumRating = getSingleValue(resolvedSearchParams.avaliacao) ?? '0'
-  const objective = getSingleValue(resolvedSearchParams.objetivo) ?? ''
 
   const radiusNumber = Number(radius) || 20
   const ratingNumber = Number(minimumRating) || 0
   const normalizedQuery = query.toLowerCase()
 
+  // Resolve CEP/bairro → lat/lng via Nominatim
+  const userCoords = query ? await resolveQueryToCoords(query) : null
+
+  const instructors = await getInstructorSearchItems(userCoords)
+
   const filteredInstructors = instructors
     .filter((instructor) => {
-      if (category && instructor.category !== category && instructor.category !== 'AB') {
-        return false
+      // Category: check profile category AND individual service categories
+      if (category) {
+        const profileMatches =
+          instructor.category === category || instructor.category === 'AB'
+        const serviceMatches = category in instructor.individual_prices
+        if (!profileMatches && !serviceMatches) return false
       }
 
-      if (
-        normalizedQuery &&
-        ![
+      // Text search: only match names — location queries are handled by Nominatim/distance
+      if (normalizedQuery && !userCoords) {
+        const searchableText = [
           instructor.full_name,
           instructor.neighborhood,
           instructor.city,
@@ -90,22 +118,15 @@ export default async function Page({ searchParams }: SearchPageProps) {
         ]
           .join(' ')
           .toLowerCase()
-          .includes(normalizedQuery)
-      ) {
+        if (!searchableText.includes(normalizedQuery)) return false
+      }
+
+      // Distance filter: only apply when we have user coords
+      if (userCoords && instructor.distance_km != null && instructor.distance_km > radiusNumber) {
         return false
       }
 
-      if (instructor.distance_km && instructor.distance_km > radiusNumber) {
-        return false
-      }
-
-      if (instructor.rating < ratingNumber) {
-        return false
-      }
-
-      if (objective && !instructor.lesson_goals.includes(objective)) {
-        return false
-      }
+      if (instructor.rating < ratingNumber) return false
 
       return instructor.status === 'active'
     })
@@ -120,19 +141,12 @@ export default async function Page({ searchParams }: SearchPageProps) {
         case 'melhor-avaliacao':
           return right.rating - left.rating
         default: {
-          const leftScore =
-            left.rating * 4 +
-            (left.is_super_instructor ? 4 : 0) +
-            (left.is_trending ? 2 : 0) -
-            (left.distance_km ?? 0) / 5
-
-          const rightScore =
-            right.rating * 4 +
-            (right.is_super_instructor ? 4 : 0) +
-            (right.is_trending ? 2 : 0) -
-            (right.distance_km ?? 0) / 5
-
-          return rightScore - leftScore
+          const score = (i: typeof left) =>
+            i.rating * 4 +
+            (i.is_super_instructor ? 4 : 0) +
+            (i.is_trending ? 2 : 0) -
+            (i.distance_km ?? 0) / 5
+          return score(right) - score(left)
         }
       }
     })
@@ -143,23 +157,13 @@ export default async function Page({ searchParams }: SearchPageProps) {
     ordenar: sort,
     raio: radius,
     avaliacao: minimumRating,
-    objetivo: objective,
   }
 
   const activeFilters = [
     query && `Busca: ${query}`,
+    userCoords && `Raio até ${radius} km`,
     category && `Categoria ${category}`,
-    radius && `Raio até ${radius} km`,
     ratingNumber > 0 && `Nota ${minimumRating}+`,
-    objective &&
-      ({
-        first_cnh: 'Primeira CNH',
-        detran_exam: 'Exame DETRAN',
-        fear: 'Perder medo',
-        practice: 'Praticar',
-        specific: 'Situações específicas',
-        other: 'Outro objetivo',
-      }[objective] ?? objective),
   ].filter((f): f is string => Boolean(f))
 
   return (
@@ -178,8 +182,7 @@ export default async function Page({ searchParams }: SearchPageProps) {
                   Encontre um instrutor credenciado perto de você
                 </h1>
                 <p className="max-w-3xl text-sm leading-6 text-[#64748B] md:text-base">
-                  Filtre por localização, categoria, preço e avaliação. O agendamento continua
-                  simples: escolher, ver horários e reservar.
+                  Digite seu CEP ou bairro para ver instrutores próximos. Filtre por categoria e avaliação.
                 </p>
               </div>
 
@@ -188,12 +191,12 @@ export default async function Page({ searchParams }: SearchPageProps) {
                   className="flex min-h-11 items-center gap-3 rounded-[12px] border border-[#E2E8F0] bg-white px-4"
                   style={{ boxShadow: 'var(--shadow-card)' }}
                 >
-                  <Search size={18} className="text-[#64748B]" />
+                  <MapPin size={18} className="text-[#64748B]" />
                   <input
                     type="text"
                     name="q"
                     defaultValue={query}
-                    placeholder="Seu CEP, bairro ou nome do instrutor"
+                    placeholder="Seu CEP ou bairro (ex: 60165-050 ou Meireles)"
                     className="min-w-0 flex-1 bg-transparent text-sm text-[#0F172A] outline-none placeholder:text-[#94A3B8]"
                   />
                 </label>
@@ -210,7 +213,6 @@ export default async function Page({ searchParams }: SearchPageProps) {
                 <input type="hidden" name="ordenar" value={sort} />
                 <input type="hidden" name="raio" value={radius} />
                 <input type="hidden" name="avaliacao" value={minimumRating} />
-                <input type="hidden" name="objetivo" value={objective} />
               </form>
 
               <div className="flex flex-wrap gap-2 lg:hidden">
@@ -281,15 +283,23 @@ export default async function Page({ searchParams }: SearchPageProps) {
               <div className="space-y-5">
                 <div className="space-y-2">
                   <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#64748B]">
-                    Localização
+                    CEP ou Bairro
                   </label>
-                  <input
-                    type="text"
-                    name="q"
-                    defaultValue={query}
-                    placeholder="CEP ou bairro"
-                    className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-sm text-[#0F172A] outline-none transition-colors focus:border-[#3ECF8E]"
-                  />
+                  <div className="relative">
+                    <MapPin size={15} className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#94A3B8]" />
+                    <input
+                      type="text"
+                      name="q"
+                      defaultValue={query}
+                      placeholder="Ex: 60165-050 ou Meireles"
+                      className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] py-2 pl-9 pr-3 text-sm text-[#0F172A] outline-none transition-colors focus:border-[#3ECF8E]"
+                    />
+                  </div>
+                  {userCoords && (
+                    <p className="text-[11px] text-[#3ECF8E]">
+                      ✓ Localização encontrada — mostrando instrutores próximos
+                    </p>
+                  )}
                 </div>
 
                 <div className="space-y-2">
@@ -302,8 +312,8 @@ export default async function Page({ searchParams }: SearchPageProps) {
                     className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] bg-white px-3 text-sm text-[#0F172A] outline-none transition-colors focus:border-[#3ECF8E]"
                   >
                     <option value="">Todas</option>
-                    <option value="A">Categoria A</option>
-                    <option value="B">Categoria B</option>
+                    <option value="A">Categoria A — Moto</option>
+                    <option value="B">Categoria B — Carro</option>
                     <option value="AB">A + B</option>
                   </select>
                 </div>
@@ -335,24 +345,6 @@ export default async function Page({ searchParams }: SearchPageProps) {
                     <option value="0">Qualquer nota</option>
                     <option value="4">4.0 ou mais</option>
                     <option value="4.5">4.5 ou mais</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-xs font-semibold uppercase tracking-[0.12em] text-[#64748B]">
-                    Objetivo da aula
-                  </label>
-                  <select
-                    name="objetivo"
-                    defaultValue={objective}
-                    className="min-h-11 w-full rounded-[8px] border border-[#E2E8F0] bg-white px-3 text-sm text-[#0F172A] outline-none transition-colors focus:border-[#3ECF8E]"
-                  >
-                    <option value="">Todos</option>
-                    <option value="first_cnh">Primeira CNH</option>
-                    <option value="detran_exam">Exame DETRAN</option>
-                    <option value="fear">Perder medo de dirigir</option>
-                    <option value="practice">Praticar</option>
-                    <option value="specific">Situações específicas</option>
                   </select>
                 </div>
 
@@ -397,10 +389,13 @@ export default async function Page({ searchParams }: SearchPageProps) {
               <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-1">
                   <h2 className="text-xl font-semibold text-[#0F172A]">
-                    {filteredInstructors.length} instrutor{filteredInstructors.length === 1 ? '' : 'es'} disponíveis perto de você
+                    {filteredInstructors.length} instrutor{filteredInstructors.length === 1 ? '' : 'es'}{' '}
+                    {userCoords ? `em até ${radius} km` : 'disponíveis'}
                   </h2>
                   <p className="text-sm text-[#64748B]">
-                    Fortalecemos a busca com localização, avaliação e compatibilidade com seu objetivo.
+                    {userCoords
+                      ? 'Ordenados por distância e relevância a partir do seu CEP.'
+                      : 'Digite seu CEP ou bairro para ver os mais próximos de você.'}
                   </p>
                 </div>
 
@@ -409,8 +404,7 @@ export default async function Page({ searchParams }: SearchPageProps) {
                   <input type="hidden" name="categoria" value={category} />
                   <input type="hidden" name="raio" value={radius} />
                   <input type="hidden" name="avaliacao" value={minimumRating} />
-                  <input type="hidden" name="objetivo" value={objective} />
-                  <label className="text-sm font-medium text-[#475569]">Ordenar por</label>
+                  <label className="text-sm font-medium text-[#475569]">Ordenar</label>
                   <div className="relative">
                     <select
                       name="ordenar"
@@ -443,37 +437,11 @@ export default async function Page({ searchParams }: SearchPageProps) {
               )}
             </div>
 
-            {filteredInstructors.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {filteredInstructors.map((instructor) => (
-                  <SearchResultCard key={instructor.id} instructor={instructor} />
-                ))}
-              </div>
-            ) : (
-              <div
-                className="rounded-[20px] border border-dashed border-[#CBD5E1] bg-white px-6 py-12 text-center"
-                style={{ boxShadow: 'var(--shadow-card)' }}
-              >
-                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#F1F5F9] text-[#64748B]">
-                  <Target size={24} />
-                </div>
-                <h3 className="mb-2 text-lg font-semibold text-[#0F172A]">
-                  Nenhum instrutor encontrado para esses filtros
-                </h3>
-                <p className="mx-auto mb-6 max-w-xl text-sm leading-6 text-[#64748B]">
-                  No estado atual do projeto, o Supabase ainda não expõe uma tabela pública de
-                  instrutores com dados para esta busca. Assim que a tabela existir, esta página
-                  já passa a consumir os registros reais automaticamente.
-                </p>
-                <Link
-                  href="/buscar"
-                  className="inline-flex min-h-11 items-center justify-center rounded-[8px] px-4 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  style={{ background: '#F97316' }}
-                >
-                  Limpar filtros
-                </Link>
-              </div>
-            )}
+            <SearchResultsView
+              instructors={filteredInstructors}
+              userCoords={userCoords}
+              radiusKm={radiusNumber}
+            />
           </div>
         </section>
       </main>

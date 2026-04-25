@@ -99,8 +99,11 @@ export async function POST(request: NextRequest) {
     body.lesson_mode === 'meeting' || body.lesson_mode === 'pickup'
       ? body.lesson_mode
       : 'meeting'
+  const parsedTotalAmount = typeof body.total_amount === 'number' ? body.total_amount : Number(body.total_amount)
   const totalAmount =
-    typeof body.total_amount === 'number' && body.total_amount > 0 ? body.total_amount : 0
+    Number.isFinite(parsedTotalAmount) && parsedTotalAmount > 0
+      ? Math.round(parsedTotalAmount * 100) / 100
+      : 0
   const paymentMethod =
     body.payment_method === 'pix' || body.payment_method === 'card'
       ? body.payment_method

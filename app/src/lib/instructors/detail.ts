@@ -53,6 +53,9 @@ export type PublicInstructorDetail = {
   available_slots: PublicInstructorAvailableSlot[]
 }
 
+const BOOKING_TIMEZONE = 'America/Fortaleza'
+const DEFAULT_BOOKING_LEAD_TIME_HOURS = 2
+
 function toCategory(value: string | null | undefined): CNHCategory | null {
   if (value === 'A' || value === 'B' || value === 'AB') {
     return value
@@ -68,6 +71,56 @@ function formatDate(offsetDays: number) {
   return date.toISOString().slice(0, 10)
 }
 
+function normalizeLeadTimeHours(value: unknown): number {
+  const parsed = Number(value)
+  if (!Number.isFinite(parsed)) return DEFAULT_BOOKING_LEAD_TIME_HOURS
+  return Math.min(24, Math.max(0, Math.round(parsed)))
+}
+
+function getNowInBookingTimezoneParts() {
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BOOKING_TIMEZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  })
+  const parts = formatter.formatToParts(new Date())
+  const getPart = (type: Intl.DateTimeFormatPartTypes) =>
+    Number(parts.find((part) => part.type === type)?.value ?? '0')
+
+  return {
+    year: getPart('year'),
+    month: getPart('month'),
+    day: getPart('day'),
+    hour: getPart('hour'),
+    minute: getPart('minute'),
+  }
+}
+
+function toTimelineValue(date: string, hour: number, minute: number) {
+  const [year, month, day] = date.split('-').map(Number)
+  if (!year || !month || !day) return Number.NaN
+  return Date.UTC(year, month - 1, day, hour, minute, 0, 0)
+}
+
+function filterSlotsByLeadTime<T extends { date: string; hour: number; minute: number }>(
+  slots: T[],
+  leadTimeHours: number
+) {
+  const now = getNowInBookingTimezoneParts()
+  const threshold =
+    Date.UTC(now.year, now.month - 1, now.day, now.hour, now.minute, 0, 0) +
+    leadTimeHours * 60 * 60 * 1000
+
+  return slots.filter((slot) => {
+    const slotTimeline = toTimelineValue(slot.date, slot.hour, slot.minute ?? 0)
+    return Number.isFinite(slotTimeline) && slotTimeline >= threshold
+  })
+}
+
 export async function getPublicInstructorAvailableSlots(
   profileId: string
 ): Promise<PublicInstructorAvailableSlot[]> {
@@ -76,6 +129,12 @@ export async function getPublicInstructorAvailableSlots(
   const admin = createAdminClient()
   const startDate = formatDate(0)
   const endDate = formatDate(21)
+  const { data: profile } = await admin
+    .from('instructor_profiles')
+    .select('booking_lead_time_hours')
+    .eq('id', profileId)
+    .maybeSingle()
+  const leadTimeHours = normalizeLeadTimeHours(profile?.booking_lead_time_hours)
 
   const { data, error } = await admin
     .from('availability_slots')
@@ -93,13 +152,13 @@ export async function getPublicInstructorAvailableSlots(
     return []
   }
 
-  return (data ?? []).map((slot) => ({
+  return filterSlotsByLeadTime((data ?? []).map((slot) => ({
     id: slot.id,
     date: slot.date,
     hour: slot.hour,
     minute: slot.minute ?? 0,
     slot_duration_minutes: slot.slot_duration_minutes ?? 60,
-  }))
+  })), leadTimeHours)
 }
 
 export async function getPublicInstructorDetail(
@@ -117,7 +176,7 @@ export async function getPublicInstructorDetail(
     admin
       .from('instructor_profiles')
       .select(
-        'id, full_name, photo_url, bio, category, neighborhood, city, latitude, longitude, rating, experience_years, status, accepts_highway, accepts_night_driving, accepts_parking_practice, student_chooses_destination'
+        'id, full_name, photo_url, bio, category, neighborhood, city, latitude, longitude, rating, experience_years, status, accepts_highway, accepts_night_driving, accepts_parking_practice, student_chooses_destination, booking_lead_time_hours'
       )
       .eq('id', profileId)
       .maybeSingle(),
@@ -156,6 +215,7 @@ export async function getPublicInstructorDetail(
   }
 
   const bookings = bookingsResult.data ?? []
+  const leadTimeHours = normalizeLeadTimeHours(profile.booking_lead_time_hours)
   const normalizedServices = (servicesResult.data ?? []).map((service) => ({
     id: service.id,
     service_type: (service.service_type === 'package' ? 'package' : 'individual') as
@@ -170,7 +230,19 @@ export async function getPublicInstructorDetail(
       revenueSplitConfig.platformSplitRate
     ),
     accepts_home_pickup: service.accepts_home_pickup ?? false,
-    pickup_ranges: (service.pickup_ranges as PickupRange[]) ?? [],
+    pickup_ranges: ((service.pickup_ranges as PickupRange[]) ?? [])
+      .map((range) => ({
+        from_km: Number(range.from_km ?? 0),
+        to_km: Number(range.to_km ?? 0),
+        price: Number(range.price ?? 0),
+      }))
+      .filter(
+        (range) =>
+          Number.isFinite(range.from_km) &&
+          Number.isFinite(range.to_km) &&
+          Number.isFinite(range.price) &&
+          range.to_km > range.from_km
+      ),
     accepts_student_vehicle: service.accepts_student_vehicle ?? false,
     provides_vehicle: service.provides_vehicle ?? true,
   }))
@@ -206,12 +278,12 @@ export async function getPublicInstructorDetail(
     student_chooses_destination: profile.student_chooses_destination ?? false,
     starting_price: startingPrice && Number.isFinite(startingPrice) ? startingPrice : null,
     services: normalizedServices,
-    available_slots: (slotsResult.data ?? []).map((slot) => ({
+    available_slots: filterSlotsByLeadTime((slotsResult.data ?? []).map((slot) => ({
       id: slot.id,
       date: slot.date,
       hour: slot.hour,
       minute: slot.minute ?? 0,
       slot_duration_minutes: slot.slot_duration_minutes ?? 60,
-    })),
+    })), leadTimeHours),
   }
 }

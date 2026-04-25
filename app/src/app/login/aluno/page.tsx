@@ -27,7 +27,7 @@ export default async function Page({ searchParams }: PageProps) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  if (user) {
+  if (user && resolvedSearchParams.next) {
     redirect(nextPath)
   }
 

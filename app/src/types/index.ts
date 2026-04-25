@@ -201,6 +201,9 @@ export interface InstructorCard {
   accepts_night_driving: boolean
   accepts_parking_practice: boolean
   student_chooses_destination: boolean
+  booking_lead_time_hours: number
+  latitude: number | null
+  longitude: number | null
   status: InstructorStatus
 }
 

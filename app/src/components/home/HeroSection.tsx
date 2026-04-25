@@ -101,7 +101,7 @@ export function HeroSection() {
           <div className="flex-1 w-full max-w-md md:max-w-none">
             <div className="relative rounded-2xl overflow-hidden aspect-[4/3] shadow-xl">
               <Image
-                src="https://images.unsplash.com/photo-rVFlPceH4gA?w=900&q=80&auto=format&fit=crop"
+                src="https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=1200"
                 alt="Instrutor sorridente ensinando aluna a dirigir"
                 fill
                 priority

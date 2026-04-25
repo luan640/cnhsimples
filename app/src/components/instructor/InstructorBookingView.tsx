@@ -1064,21 +1064,22 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
 
   const baseAmount = useMemo(() => {
     if (!selectedService || selectedSlotCount === 0) return 0
-    return isPkg ? selectedService.price : selectedService.price * selectedSlotCount
+    const raw = isPkg ? selectedService.price : selectedService.price * selectedSlotCount
+    return Math.round(raw * 100) / 100
   }, [selectedService, selectedSlotCount, isPkg])
 
   const previewBaseAmount = useMemo(() => {
     if (!selectedService) return 0
-    if (isPkg) return selectedService.price
-    return selectedService.price * Math.max(selectedSlotCount, 1)
+    const raw = isPkg ? selectedService.price : selectedService.price * Math.max(selectedSlotCount, 1)
+    return Math.round(raw * 100) / 100
   }, [selectedService, selectedSlotCount, isPkg])
 
-  const pickupSurchargePerLesson = matchedPickupRange?.price ?? 0
-  const pickupSurchargeTotal = lessonMode === 'pickup' ? pickupSurchargePerLesson * pickupTripCount : 0
-  const totalAmount = baseAmount + pickupSurchargeTotal
+  const pickupSurchargePerLesson = Math.round((matchedPickupRange?.price ?? 0) * 100) / 100
+  const pickupSurchargeTotal = lessonMode === 'pickup' ? Math.round(pickupSurchargePerLesson * pickupTripCount * 100) / 100 : 0
+  const totalAmount = Math.round((baseAmount + pickupSurchargeTotal) * 100) / 100
   const previewPickupSurchargeTotal =
-    lessonMode === 'pickup' ? pickupSurchargePerLesson * previewPickupTripCount : 0
-  const previewTotalAmount = previewBaseAmount + previewPickupSurchargeTotal
+    lessonMode === 'pickup' ? Math.round(pickupSurchargePerLesson * previewPickupTripCount * 100) / 100 : 0
+  const previewTotalAmount = Math.round((previewBaseAmount + previewPickupSurchargeTotal) * 100) / 100
 
   useEffect(() => {
     if (!selectedService?.accepts_home_pickup && lessonMode === 'pickup') setLessonMode('meeting')

@@ -1,6 +1,8 @@
-import Link from 'next/link'
+'use client'
+
 import Image from 'next/image'
-import { Star, MapPin, Trophy, Users } from 'lucide-react'
+import Link from 'next/link'
+import { MapPin, Star, Trophy, Users } from 'lucide-react'
 
 import type { InstructorCard as InstructorCardType } from '@/types'
 
@@ -49,15 +51,15 @@ export function SearchResultCard({ instructor }: Props) {
   const preferences = [
     accepts_highway ? 'Aulas em rodovias' : null,
     accepts_night_driving ? 'Aulas noturnas' : null,
-    accepts_parking_practice ? 'Pratica de estacionamento' : null,
+    accepts_parking_practice ? 'Prática de estacionamento' : null,
     student_chooses_destination ? 'Aluno escolhe o trajeto' : null,
   ].filter((value): value is string => Boolean(value))
 
-  const priceEntries = ([
+  const priceEntries = [
     individual_prices.A != null ? { label: 'Cat. A', price: individual_prices.A } : null,
     individual_prices.B != null ? { label: 'Cat. B', price: individual_prices.B } : null,
     individual_prices.AB != null ? { label: 'Cat. A+B', price: individual_prices.AB } : null,
-  ]).filter((value): value is { label: string; price: number } => Boolean(value))
+  ].filter((value): value is { label: string; price: number } => Boolean(value))
 
   return (
     <div
@@ -99,7 +101,7 @@ export function SearchResultCard({ instructor }: Props) {
             {distance_km !== undefined ? (
               <div className="flex items-center gap-1 text-xs text-[#64748B]">
                 <MapPin size={11} />
-                {distance_km.toFixed(1)} km de voce
+                {distance_km.toFixed(1)} km de você
               </div>
             ) : null}
 
@@ -133,9 +135,7 @@ export function SearchResultCard({ instructor }: Props) {
         </div>
       </div>
 
-      {bio ? (
-        <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-[#475569]">{bio}</p>
-      ) : null}
+      {bio ? <p className="mb-3 line-clamp-2 text-sm leading-relaxed text-[#475569]">{bio}</p> : null}
 
       {preferences.length > 0 ? (
         <div className="mb-4 flex flex-wrap gap-2">
@@ -190,7 +190,7 @@ export function SearchResultCard({ instructor }: Props) {
           href={`/instrutor/${id}`}
           className="flex w-full items-center justify-center rounded-[6px] bg-[#F97316] px-4 py-2.5 text-sm font-medium text-white transition-opacity hover:opacity-90 active:opacity-80"
         >
-          Ver horarios disponiveis
+          Ver horários disponíveis
         </Link>
       </div>
     </div>

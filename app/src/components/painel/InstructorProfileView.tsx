@@ -152,6 +152,7 @@ export function InstructorProfileView({ profile, email }: InstructorProfileViewP
     acceptsNightDriving: profile.accepts_night_driving,
     acceptsParkingPractice: profile.accepts_parking_practice,
     studentChoosesDestination: profile.student_chooses_destination,
+    bookingLeadTimeHours: profile.booking_lead_time_hours ?? 2,
   })
   const [preferenceError, setPreferenceError] = useState('')
   const [isSavingPreferences, startPreferenceTransition] = useTransition()
@@ -159,6 +160,11 @@ export function InstructorProfileView({ profile, email }: InstructorProfileViewP
   const experienceLabel = profile.experience_years
     ? `${profile.experience_years} anos de experiencia`
     : 'Experiencia nao informada'
+  type PreferenceToggleKey =
+    | 'acceptsHighway'
+    | 'acceptsNightDriving'
+    | 'acceptsParkingPractice'
+    | 'studentChoosesDestination'
 
   const preferenceItems = [
     {
@@ -189,7 +195,7 @@ export function InstructorProfileView({ profile, email }: InstructorProfileViewP
     router.push('/login')
   }
 
-  function handlePreferenceToggle(key: keyof typeof preferences) {
+  function handlePreferenceToggle(key: PreferenceToggleKey) {
     const previousPreferences = preferences
     const nextPreferences = {
       ...preferences,
@@ -205,6 +211,7 @@ export function InstructorProfileView({ profile, email }: InstructorProfileViewP
       formData.set('acceptsNightDriving', String(nextPreferences.acceptsNightDriving))
       formData.set('acceptsParkingPractice', String(nextPreferences.acceptsParkingPractice))
       formData.set('studentChoosesDestination', String(nextPreferences.studentChoosesDestination))
+      formData.set('bookingLeadTimeHours', String(nextPreferences.bookingLeadTimeHours))
 
       const result = await updateInstructorPreferencesAction(formData)
 
@@ -313,6 +320,66 @@ export function InstructorProfileView({ profile, email }: InstructorProfileViewP
                     </div>
                   )
                 })}
+
+                <div className="rounded-[14px] border border-[#E2E8F0] bg-[#F8FAFC] px-3 py-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm text-[#0F172A]">Antecedencia minima para agendamento</p>
+                      <p className="text-[11px] text-[#94A3B8]">
+                        Horas minimas entre agora e o horario da aula.
+                      </p>
+                    </div>
+                    <div className="shrink-0">
+                      <select
+                        value={String(preferences.bookingLeadTimeHours)}
+                        disabled={isSavingPreferences}
+                        onChange={(event) => {
+                          const nextLeadTimeHours = Math.min(
+                            24,
+                            Math.max(0, Number.parseInt(event.target.value, 10) || 0)
+                          )
+
+                          const previousPreferences = preferences
+                          const nextPreferences = {
+                            ...preferences,
+                            bookingLeadTimeHours: nextLeadTimeHours,
+                          }
+
+                          setPreferences(nextPreferences)
+                          setPreferenceError('')
+
+                          startPreferenceTransition(async () => {
+                            const formData = new FormData()
+                            formData.set('acceptsHighway', String(nextPreferences.acceptsHighway))
+                            formData.set('acceptsNightDriving', String(nextPreferences.acceptsNightDriving))
+                            formData.set('acceptsParkingPractice', String(nextPreferences.acceptsParkingPractice))
+                            formData.set(
+                              'studentChoosesDestination',
+                              String(nextPreferences.studentChoosesDestination)
+                            )
+                            formData.set('bookingLeadTimeHours', String(nextPreferences.bookingLeadTimeHours))
+
+                            const result = await updateInstructorPreferencesAction(formData)
+                            if (!result.ok) {
+                              setPreferences(previousPreferences)
+                              setPreferenceError(result.error ?? 'Falha ao atualizar preferencias.')
+                              return
+                            }
+
+                            router.refresh()
+                          })
+                        }}
+                        className="min-h-9 rounded-[10px] border border-[#D1D5DB] bg-white px-2 text-sm text-[#0F172A] outline-none focus:border-[#60A5FA]"
+                      >
+                        {Array.from({ length: 25 }, (_, hour) => (
+                          <option key={hour} value={hour}>
+                            {hour}h
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                </div>
 
                 {preferenceError ? (
                   <div className="rounded-[14px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]">
