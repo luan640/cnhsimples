@@ -1,3 +1,5 @@
+import nodemailer from 'nodemailer'
+
 type EmailPayload = {
   to: string
   subject: string
@@ -5,41 +7,76 @@ type EmailPayload = {
   text: string
 }
 
+function parseSmtpPort(value: string | undefined) {
+  if (!value) return 587
+
+  const port = Number(value)
+
+  if (!Number.isInteger(port) || port <= 0) {
+    throw new Error('SMTP_PORT invalida.')
+  }
+
+  return port
+}
+
 function getEmailConfig() {
   return {
-    apiKey: process.env.RESEND_API_KEY,
-    from: process.env.RESEND_FROM_EMAIL,
+    host: process.env.SMTP_HOST,
+    port: parseSmtpPort(process.env.SMTP_PORT),
+    secure: process.env.SMTP_SECURE === 'true',
+    user: process.env.SMTP_USER,
+    pass: process.env.SMTP_PASS,
+    from: process.env.SMTP_FROM_EMAIL,
+    fromName: process.env.SMTP_FROM_NAME ?? 'CNH Simples',
     appUrl: process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
   }
+}
+
+let transporterPromise: ReturnType<typeof nodemailer.createTransport> | null = null
+
+function getTransporter() {
+  if (!transporterPromise) {
+    const config = getEmailConfig()
+
+    transporterPromise = nodemailer.createTransport({
+      host: config.host,
+      port: config.port,
+      secure: config.secure,
+      auth:
+        config.user && config.pass
+          ? {
+              user: config.user,
+              pass: config.pass,
+            }
+          : undefined,
+    })
+  }
+
+  return transporterPromise
 }
 
 async function sendEmail(payload: EmailPayload) {
   const config = getEmailConfig()
 
-  if (!config.apiKey || !config.from) {
-    console.warn('[email] RESEND_API_KEY ou RESEND_FROM_EMAIL nao configurados. E-mail nao enviado.')
+  if (!config.host || !config.from) {
+    console.warn('[email] SMTP_HOST ou SMTP_FROM_EMAIL nao configurados. E-mail nao enviado.')
     return { sent: false, skipped: true }
   }
 
-  const response = await fetch('https://api.resend.com/emails', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      from: config.from,
-      to: [payload.to],
-      subject: payload.subject,
-      html: payload.html,
-      text: payload.text,
-    }),
-  })
-
-  if (!response.ok) {
-    const body = await response.text()
-    throw new Error(`Falha ao enviar e-mail: ${body}`)
+  if (!config.user || !config.pass) {
+    console.warn('[email] SMTP_USER ou SMTP_PASS nao configurados. E-mail nao enviado.')
+    return { sent: false, skipped: true }
   }
+
+  const transporter = getTransporter()
+
+  await transporter.sendMail({
+    from: `"${config.fromName}" <${config.from}>`,
+    to: payload.to,
+    subject: payload.subject,
+    html: payload.html,
+    text: payload.text,
+  })
 
   return { sent: true, skipped: false }
 }
