@@ -1,5 +1,6 @@
 import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { settleCompletedLessons } from '@/lib/bookings/payments'
 
 export type WalletData = {
   walletId: string | null
@@ -33,6 +34,7 @@ export type InstructorPixInfo = {
 
 export async function getInstructorWallet(profileId: string): Promise<WalletData> {
   noStore()
+  await settleCompletedLessons(profileId).catch(() => {})
   const supabase = await createClient()
 
   const { data: wallet } = await supabase
@@ -42,14 +44,15 @@ export async function getInstructorWallet(profileId: string): Promise<WalletData
     .eq('owner_type', 'instructor')
     .maybeSingle()
 
-  const { data: pending } = await supabase
-    .from('booking_groups')
+  // Aulas pagas e agendadas mas ainda não realizadas — settleCompletedLessons já liquidou as passadas
+  const { data: confirmedBookings } = await supabase
+    .from('bookings')
     .select('instructor_amount')
     .eq('instructor_id', profileId)
-    .eq('status', 'awaiting_payment')
+    .eq('status', 'confirmed')
 
-  const pendingAmount = (pending ?? []).reduce(
-    (sum, bg) => sum + Number(bg.instructor_amount ?? 0),
+  const pendingAmount = (confirmedBookings ?? []).reduce(
+    (sum, b) => sum + Number(b.instructor_amount ?? 0),
     0
   )
 

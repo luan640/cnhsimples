@@ -699,7 +699,6 @@ export async function confirmBookingGroupPayment(
       .eq('booking_group_id', bookingGroupId),
   ])
 
-  await ensureWalletsCredited(admin, bookingGroupId, bookingGroup.instructor_id, instructorAmount, platformAmount, slotIds.length)
   await notifyInstructorAboutPaidBooking(admin, bookingGroupId)
 }
 
@@ -849,4 +848,99 @@ export async function getBookingGroupStatus(
   }
 
   return { status: bookingGroup.status }
+}
+
+// Credita as carteiras de aulas que já ocorreram (slot.start + 1h <= agora).
+// Chamado de forma lazy ao carregar dashboard/carteira do instrutor.
+// Idempotente: usa booking.id como reference_id para evitar duplo crédito.
+export async function settleCompletedLessons(instructorId: string): Promise<void> {
+  const admin = createAdminClient()
+
+  const { data: bookings, error } = await admin
+    .from('bookings')
+    .select('id, slot_id, booking_group_id, instructor_amount, platform_amount')
+    .eq('instructor_id', instructorId)
+    .eq('status', 'confirmed')
+
+  if (error || !bookings?.length) return
+
+  const slotIds = bookings
+    .map((b) => b.slot_id)
+    .filter((id): id is string => typeof id === 'string')
+
+  if (slotIds.length === 0) return
+
+  const { data: slots } = await admin
+    .from('availability_slots')
+    .select('id, date, hour, minute')
+    .in('id', slotIds)
+
+  if (!slots?.length) return
+
+  const now = getNowInBookingTimezoneParts()
+  const nowMs = Date.UTC(now.year, now.month - 1, now.day, now.hour, now.minute, 0, 0)
+  const ONE_HOUR_MS = 60 * 60 * 1000
+
+  const pastSlotIds = new Set(
+    slots
+      .filter((slot) => {
+        const slotStartMs = toTimelineValue(slot.date, slot.hour, slot.minute ?? 0)
+        return Number.isFinite(slotStartMs) && slotStartMs + ONE_HOUR_MS <= nowMs
+      })
+      .map((slot) => slot.id)
+  )
+
+  if (pastSlotIds.size === 0) return
+
+  const toComplete = bookings.filter((b) => b.slot_id && pastSlotIds.has(b.slot_id))
+
+  for (const booking of toComplete) {
+    const { data: existing } = await admin
+      .from('wallet_transactions')
+      .select('id')
+      .eq('reference_id', booking.id)
+      .eq('type', 'credit')
+      .limit(1)
+      .maybeSingle()
+
+    if (existing) continue
+
+    await Promise.all([
+      admin
+        .from('bookings')
+        .update({ status: 'completed' })
+        .eq('id', booking.id)
+        .eq('status', 'confirmed'),
+      admin
+        .from('availability_slots')
+        .update({ status: 'completed' })
+        .eq('id', booking.slot_id)
+        .eq('status', 'booked'),
+    ])
+
+    const instructorAmount = round2(Number(booking.instructor_amount))
+    const platformAmount = round2(Number(booking.platform_amount))
+
+    if (instructorAmount > 0) {
+      await creditWallet(
+        admin,
+        instructorId,
+        'instructor',
+        instructorAmount,
+        'Aula concluída',
+        booking.id
+      )
+    }
+
+    if (platformAmount > 0) {
+      await creditWallet(
+        admin,
+        PLATFORM_WALLET_OWNER_ID,
+        'platform',
+        platformAmount,
+        'Comissão — aula concluída',
+        booking.id
+      )
+    }
+  }
 }

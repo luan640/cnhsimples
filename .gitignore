@@ -96,3 +96,5 @@ supabase/.temp/
 # Nested repositories or vendored VCS metadata
 app/.git/
 app/.git-local-backup/
+
+.vercel

@@ -129,7 +129,7 @@ export default async function CarteiraPage({ searchParams }: { searchParams: Sea
           </div>
         </div>
 
-        {/* Aguardando confirmação MP */}
+        {/* A receber após as aulas */}
         <div
           className="rounded-[12px] border p-5 flex flex-col gap-3"
           style={{ background: '#fff', borderColor: '#E2E8F0' }}
@@ -142,7 +142,7 @@ export default async function CarteiraPage({ searchParams }: { searchParams: Sea
             {fmt(wallet.pendingAmount)}
           </p>
           <p className="text-xs" style={{ color: '#94A3B8' }}>
-            Pagamentos aguardando confirmação do Mercado Pago
+            Aulas agendadas e pagas — liberado após a realização
           </p>
           <div className="mt-1">
             <div
@@ -151,8 +151,8 @@ export default async function CarteiraPage({ searchParams }: { searchParams: Sea
             >
               <Banknote size={12} />
               {wallet.pendingAmount > 0
-                ? 'Será creditado após confirmação do MP'
-                : 'Nenhum pagamento pendente'}
+                ? 'Será creditado após cada aula ser realizada'
+                : 'Nenhuma aula aguardando realização'}
             </div>
           </div>
         </div>
