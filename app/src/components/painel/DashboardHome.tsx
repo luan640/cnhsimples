@@ -7,6 +7,8 @@ import {
   CalendarCheck,
   Clock,
   DollarSign,
+  MapPin,
+  Navigation,
   Star,
   TrendingUp,
   User,
@@ -282,10 +284,11 @@ export function DashboardHome({ profile, stats }: Props) {
                 className="flex items-center gap-4 px-5 py-3.5"
                 style={{ borderBottom: index < stats.proximasAulas.length - 1 ? '1px solid #F8FAFC' : undefined }}
               >
-                <div className="w-14 shrink-0 text-center">
-                  <span className="text-sm font-semibold tabular-nums" style={{ color: '#0F172A' }}>
+                <div className="w-16 shrink-0 text-center">
+                  <span className="text-sm font-bold tabular-nums" style={{ color: '#0F172A' }}>
                     {aula.hora}
                   </span>
+                  <p className="text-[10px] mt-0.5" style={{ color: '#94A3B8' }}>{aula.data}</p>
                 </div>
 
                 <div
@@ -296,12 +299,28 @@ export function DashboardHome({ profile, stats }: Props) {
                 </div>
 
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium truncate" style={{ color: '#0F172A' }}>
+                  <p className="text-sm font-semibold truncate" style={{ color: '#0F172A' }}>
                     {aula.aluno}
                   </p>
-                  <p className="text-xs" style={{ color: '#94A3B8' }}>
-                    Categoria {aula.categoria}
-                  </p>
+                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                    <span className="text-xs" style={{ color: '#94A3B8' }}>Cat. {aula.categoria}</span>
+                    {aula.modo === 'pickup' ? (
+                      <span className="inline-flex items-center gap-1 text-[10px]" style={{ color: '#0284C7' }}>
+                        <Navigation size={10} />
+                        Busca em casa
+                      </span>
+                    ) : aula.modo === 'meeting' ? (
+                      <span className="inline-flex items-center gap-1 text-[10px]" style={{ color: '#64748B' }}>
+                        <MapPin size={10} />
+                        Ponto de encontro
+                      </span>
+                    ) : null}
+                    {aula.valor > 0 && (
+                      <span className="text-[10px] font-medium" style={{ color: '#3ECF8E' }}>
+                        R$ {aula.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </span>
+                    )}
+                  </div>
                 </div>
 
                 <span

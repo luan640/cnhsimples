@@ -19,9 +19,12 @@ export type InstructorProfile = {
 
 export type ProximaAula = {
   hora: string
+  data: string
   aluno: string
   categoria: string
   status: string
+  valor: number
+  modo: 'meeting' | 'pickup' | null
 }
 
 export type DashboardStats = {
@@ -120,7 +123,7 @@ export async function getDashboardStats(profileId: string): Promise<DashboardSta
 
   const { data: slots, error: slotsError } = await supabase
     .from('availability_slots')
-    .select('id, date, hour, status')
+    .select('id, date, hour, minute, status')
     .eq('instructor_id', profileId)
     .eq('status', 'booked')
     .order('date', { ascending: true })
@@ -148,21 +151,39 @@ export async function getDashboardStats(profileId: string): Promise<DashboardSta
 
     if (futuros.length > 0) {
       const slotIds = futuros.map((slot) => slot.id)
+      const admin = createAdminClient()
 
-      const { data: bookings } = await supabase
+      const { data: bookings } = await admin
         .from('bookings')
-        .select('slot_id, status, value')
+        .select('slot_id, status, value, lesson_mode, student_id, instructor_amount')
         .in('slot_id', slotIds)
         .in('status', ['confirmed', 'pending'])
 
+      const studentIds = [...new Set((bookings ?? []).map((b) => b.student_id).filter(Boolean))]
+      const { data: students } = studentIds.length > 0
+        ? await admin.from('student_profiles').select('id, full_name').in('id', studentIds)
+        : { data: [] }
+
+      const studentMap = new Map((students ?? []).map((s) => [s.id, s.full_name]))
+
       empty.proximasAulas = futuros.map((slot) => {
         const booking = bookings?.find((item) => item.slot_id === slot.id)
+        const min = slot.minute ?? 0
+        const hora = `${String(slot.hour).padStart(2, '0')}:${String(min).padStart(2, '0')}`
+        const [y, m, d] = slot.date.split('-')
+        const data = `${d}/${m}/${y}`
+        const alunoNome = booking?.student_id
+          ? (studentMap.get(booking.student_id) ?? 'Aluno')
+          : 'Aluno'
 
         return {
-          hora: `${String(slot.hour).padStart(2, '0')}:00`,
-          aluno: 'Aluno',
+          hora,
+          data,
+          aluno: alunoNome,
           categoria: 'B',
           status: booking?.status ?? 'pendente',
+          valor: Number(booking?.value ?? 0),
+          modo: (booking?.lesson_mode as 'meeting' | 'pickup') ?? null,
         }
       })
     }

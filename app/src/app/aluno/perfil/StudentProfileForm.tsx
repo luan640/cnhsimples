@@ -3,7 +3,7 @@
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState, useTransition } from 'react'
-import { ArrowLeft, Check, MapPin, Search, User } from 'lucide-react'
+import { ArrowLeft, CalendarClock, Check, MapPin, Search, User, UserRound } from 'lucide-react'
 
 import { updateStudentProfileAction } from './actions'
 import type { CepLookupResult } from '@/types'
@@ -281,21 +281,24 @@ export function StudentProfileForm({
         style={{ background: '#1c1c1c', borderTop: '1px solid #333333', paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
       >
         {[
-          { href: '/aluno', label: 'Minhas aulas' },
-          { href: '/buscar', label: 'Buscar' },
-          { href: '/aluno/perfil', label: 'Perfil', active: true },
-        ].map(({ href, label, active }) => (
-          <button
-            key={href}
-            type="button"
-            onClick={() => router.push(href)}
-            className="flex flex-1 flex-col items-center gap-1 py-2.5 transition-all"
-            style={{ color: active ? '#3ECF8E' : '#a1a1aa' }}
-          >
-            <span className="text-lg leading-none">{label === 'Perfil' ? '👤' : label === 'Buscar' ? '🔍' : '📅'}</span>
-            <span className="text-[10px] font-medium">{label}</span>
-          </button>
-        ))}
+          { href: '/aluno', icon: CalendarClock, label: 'Minhas aulas' },
+          { href: '/buscar', icon: Search, label: 'Buscar' },
+          { href: '/aluno/perfil', icon: UserRound, label: 'Perfil' },
+        ].map(({ href, icon: Icon, label }) => {
+          const isActive = href === '/aluno/perfil'
+          return (
+            <button
+              key={href}
+              type="button"
+              onClick={() => router.push(href)}
+              className="flex flex-1 flex-col items-center gap-1 py-2.5 transition-all"
+              style={{ color: isActive ? '#3ECF8E' : '#a1a1aa' }}
+            >
+              <Icon size={22} />
+              <span className="text-[10px] font-medium">{label}</span>
+            </button>
+          )
+        })}
       </nav>
     </div>
   )
