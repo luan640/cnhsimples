@@ -1,6 +1,7 @@
 ﻿import crypto from 'node:crypto'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { sendInstructorBookingPaidEmail } from '@/lib/email/notifications'
 import { getMercadoPagoPaymentClient } from '@/lib/mercadopago/client'
 import { getRevenueSplitConfig } from '@/lib/revenue-split'
 
@@ -43,6 +44,11 @@ export type BookingPaymentResult = {
   } | null
 }
 
+export type BookingGroupStatusResult = {
+  status: string
+  whatsappUrl?: string | null
+}
+
 function round2(n: number) {
   return Math.round(n * 100) / 100
 }
@@ -57,6 +63,26 @@ function normalizeLeadTimeHours(value: unknown): number {
   const parsed = Number(value)
   if (!Number.isFinite(parsed)) return DEFAULT_BOOKING_LEAD_TIME_HOURS
   return Math.min(24, Math.max(0, Math.round(parsed)))
+}
+
+function formatCurrency(value: number) {
+  return value.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
+}
+
+function formatSlotLine(slot: { date: string; hour: number; minute: number | null }) {
+  const [year, month, day] = slot.date.split('-').map(Number)
+  const formattedDate = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`
+  const formattedTime = `${String(slot.hour).padStart(2, '0')}:${String(slot.minute ?? 0).padStart(2, '0')}`
+  return `${formattedDate} as ${formattedTime}`
+}
+
+function getWhatsAppHref(phone: string | null | undefined, message: string) {
+  const digits = (phone ?? '').replace(/\D/g, '')
+  if (!digits) return null
+  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
 }
 
 function getNowInBookingTimezoneParts() {
@@ -475,6 +501,109 @@ async function ensureWalletsCredited(
   }
 }
 
+async function getBookingGroupCommunicationData(
+  admin: ReturnType<typeof createAdminClient>,
+  bookingGroupId: string,
+  studentId?: string
+) {
+  const { data: bookingGroup } = await admin
+    .from('booking_groups')
+    .select('id, student_id, instructor_id, service_id, lesson_mode, total_amount, slot_ids')
+    .eq('id', bookingGroupId)
+    .maybeSingle()
+
+  if (!bookingGroup) return null
+  if (studentId && bookingGroup.student_id !== studentId) return null
+
+  const slotIds = Array.isArray(bookingGroup.slot_ids)
+    ? bookingGroup.slot_ids.filter((id): id is string => typeof id === 'string')
+    : []
+
+  const [studentRes, instructorRes, serviceRes, slotsRes] = await Promise.all([
+    admin
+      .from('student_profiles')
+      .select('full_name, phone')
+      .eq('id', bookingGroup.student_id)
+      .maybeSingle(),
+    admin
+      .from('instructor_profiles')
+      .select('full_name, phone, user_id')
+      .eq('id', bookingGroup.instructor_id)
+      .maybeSingle(),
+    bookingGroup.service_id
+      ? admin
+          .from('instructor_services')
+          .select('title')
+          .eq('id', bookingGroup.service_id)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    slotIds.length > 0
+      ? admin
+          .from('availability_slots')
+          .select('id, date, hour, minute')
+          .in('id', slotIds)
+      : Promise.resolve({ data: [] }),
+  ])
+
+  const student = studentRes.data
+  const instructor = instructorRes.data
+  const service = serviceRes.data
+  const slots = (slotsRes.data ?? []).slice().sort((a, b) => {
+    if (a.date !== b.date) return a.date.localeCompare(b.date)
+    if (a.hour !== b.hour) return a.hour - b.hour
+    return (a.minute ?? 0) - (b.minute ?? 0)
+  })
+
+  if (!student || !instructor || slots.length === 0) return null
+
+  const slotLines = slots.map(formatSlotLine)
+  const serviceTitle = service?.title ?? `Agendamento de ${slots.length} aula(s)`
+  const lessonModeLabel =
+    bookingGroup.lesson_mode === 'pickup' ? 'busca em casa' : 'encontro no local combinado'
+  const whatsappMessage =
+    `Oi, ${instructor.full_name}! Sou ${student.full_name}.\n\n` +
+    `O pagamento do meu agendamento foi confirmado na plataforma.\n` +
+    `Servico: ${serviceTitle}\n` +
+    `Formato: ${lessonModeLabel}\n` +
+    `Horarios:\n- ${slotLines.join('\n- ')}\n` +
+    `Valor pago: ${formatCurrency(Number(bookingGroup.total_amount ?? 0))}\n\n` +
+    `Te chamei para voce ficar ciente do agendamento.`
+
+  return {
+    bookingGroup,
+    student,
+    instructor,
+    slotLines,
+    serviceTitle,
+    whatsappUrl: getWhatsAppHref(instructor.phone, whatsappMessage),
+  }
+}
+
+async function notifyInstructorAboutPaidBooking(
+  admin: ReturnType<typeof createAdminClient>,
+  bookingGroupId: string
+) {
+  const communication = await getBookingGroupCommunicationData(admin, bookingGroupId)
+  if (!communication?.instructor.user_id) return
+
+  const authUser = await admin.auth.admin.getUserById(communication.instructor.user_id)
+  const instructorEmail = authUser.data.user?.email
+  if (!instructorEmail) return
+
+  await sendInstructorBookingPaidEmail({
+    to: instructorEmail,
+    instructorName: communication.instructor.full_name ?? 'instrutor',
+    studentName: communication.student.full_name ?? 'Aluno',
+    studentPhone: communication.student.phone ?? null,
+    serviceTitle: communication.serviceTitle,
+    lessonMode: communication.bookingGroup.lesson_mode,
+    totalAmount: Number(communication.bookingGroup.total_amount ?? 0),
+    slotLines: communication.slotLines,
+  }).catch((error) => {
+    console.error('[email] Falha ao enviar confirmacao de pagamento do agendamento:', error)
+  })
+}
+
 export async function confirmBookingGroupPayment(
   bookingGroupId: string,
   mpPaymentId: string
@@ -571,6 +700,7 @@ export async function confirmBookingGroupPayment(
   ])
 
   await ensureWalletsCredited(admin, bookingGroupId, bookingGroup.instructor_id, instructorAmount, platformAmount, slotIds.length)
+  await notifyInstructorAboutPaidBooking(admin, bookingGroupId)
 }
 
 export async function cancelBookingGroupPayment(bookingGroupId: string): Promise<void> {
@@ -654,7 +784,7 @@ export async function processBookingPaymentWebhook(
 export async function getBookingGroupStatus(
   bookingGroupId: string,
   studentId: string
-): Promise<{ status: string } | null> {
+): Promise<BookingGroupStatusResult | null> {
   const admin = createAdminClient()
   const paymentClient = getMercadoPagoPaymentClient()
 
@@ -676,7 +806,8 @@ export async function getBookingGroupStatus(
     } catch {
       // Idempotência — ignora erros aqui; o crédito já pode ter sido feito
     }
-    return { status: 'paid' }
+    const communication = await getBookingGroupCommunicationData(admin, bookingGroupId, studentId)
+    return { status: 'paid', whatsappUrl: communication?.whatsappUrl ?? null }
   }
 
   const { data: paymentRow } = await admin
@@ -699,7 +830,8 @@ export async function getBookingGroupStatus(
       if (bookingGroup.status !== 'paid' || paymentRow.status !== 'approved') {
         await confirmBookingGroupPayment(bookingGroupId, String(paymentRow.mp_payment_id))
       }
-      return { status: 'paid' }
+      const communication = await getBookingGroupCommunicationData(admin, bookingGroupId, studentId)
+      return { status: 'paid', whatsappUrl: communication?.whatsappUrl ?? null }
     }
 
     if (mpStatus === 'rejected' || mpStatus === 'cancelled') {
@@ -718,4 +850,3 @@ export async function getBookingGroupStatus(
 
   return { status: bookingGroup.status }
 }
-

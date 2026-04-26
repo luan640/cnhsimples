@@ -1215,6 +1215,22 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   function handleCheckoutSuccess(bookingGroupId: string) {
     setSuccessBookingGroupId(bookingGroupId)
     setCheckoutPhase('success')
+
+    void (async () => {
+      try {
+        const response = await fetch(`/api/payments/booking/status?booking_group_id=${bookingGroupId}`, {
+          cache: 'no-store',
+        })
+        if (!response.ok) return
+
+        const result = (await response.json()) as { status?: string; whatsappUrl?: string | null }
+        if (result.status === 'paid' && result.whatsappUrl) {
+          window.location.assign(result.whatsappUrl)
+        }
+      } catch {
+        // keep success screen as fallback
+      }
+    })()
   }
 
   function handleCheckoutError(message: string) {

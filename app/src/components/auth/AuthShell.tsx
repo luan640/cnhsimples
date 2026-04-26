@@ -1,6 +1,6 @@
+import Image from 'next/image'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
-import { Car } from 'lucide-react'
 
 type AuthShellProps = {
   children: ReactNode
@@ -12,18 +12,20 @@ export function AuthShell({ children, eyebrow = 'CNH Simples' }: AuthShellProps)
     <main className="min-h-screen bg-[#F8FAFC] px-4 py-6 md:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl flex-col">
         <div className="flex items-center justify-between py-3">
-          <Link href="/" className="flex items-center gap-2 text-[#0F172A]">
-            <div
-              className="flex h-9 w-9 items-center justify-center rounded-[8px]"
-              style={{ background: '#3ECF8E' }}
-            >
-              <Car size={18} color="#0F172A" />
-            </div>
+          <Link href="/" className="flex items-center gap-3 text-[#0F172A]">
             <div className="leading-tight">
               <div className="text-xs font-semibold uppercase tracking-[0.16em] text-[#64748B]">
                 {eyebrow}
               </div>
-              <div className="text-base font-semibold">CNH Simples</div>
+              <div className="relative mt-1 h-10 w-[150px]">
+                <Image
+                  src="/brand-logo.png"
+                  alt="Logo oficial da plataforma"
+                  fill
+                  className="object-contain object-left"
+                  sizes="150px"
+                />
+              </div>
             </div>
           </Link>
 

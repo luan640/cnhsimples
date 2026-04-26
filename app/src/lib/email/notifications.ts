@@ -136,3 +136,56 @@ export async function sendInstructorActivatedEmail(params: {
     `,
   })
 }
+
+export async function sendInstructorBookingPaidEmail(params: {
+  to: string
+  instructorName: string
+  studentName: string
+  studentPhone: string | null
+  serviceTitle: string
+  lessonMode: 'meeting' | 'pickup'
+  totalAmount: number
+  slotLines: string[]
+}) {
+  const dashboardUrl = `${getEmailConfig().appUrl}/painel`
+  const lessonModeLabel = params.lessonMode === 'pickup' ? 'Busca em casa' : 'Encontro com o aluno'
+  const amount = params.totalAmount.toLocaleString('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  })
+  const slotText = params.slotLines.join(' | ')
+  const studentPhoneText = params.studentPhone?.trim() || 'Nao informado'
+
+  return sendEmail({
+    to: params.to,
+    subject: 'Novo pagamento confirmado de agendamento',
+    text:
+      `Ola, ${params.instructorName}. ` +
+      `O aluno ${params.studentName} concluiu o pagamento de um agendamento no CNH Simples. ` +
+      `Servico: ${params.serviceTitle}. ` +
+      `Formato: ${lessonModeLabel}. ` +
+      `Horarios: ${slotText}. ` +
+      `Valor pago: ${amount}. ` +
+      `Telefone do aluno: ${studentPhoneText}. ` +
+      `Acesse seu painel: ${dashboardUrl}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #0F172A; line-height: 1.6;">
+        <h1 style="margin-bottom: 12px;">Pagamento de agendamento confirmado</h1>
+        <p>Ola, ${params.instructorName}.</p>
+        <p>O aluno <strong>${params.studentName}</strong> concluiu o pagamento de um agendamento no <strong>CNH Simples</strong>.</p>
+        <ul style="padding-left: 18px;">
+          <li><strong>Servico:</strong> ${params.serviceTitle}</li>
+          <li><strong>Formato:</strong> ${lessonModeLabel}</li>
+          <li><strong>Horarios:</strong> ${slotText}</li>
+          <li><strong>Valor pago:</strong> ${amount}</li>
+          <li><strong>Telefone do aluno:</strong> ${studentPhoneText}</li>
+        </ul>
+        <p style="margin: 24px 0;">
+          <a href="${dashboardUrl}" style="display: inline-block; background: #3ECF8E; color: #0F172A; text-decoration: none; padding: 12px 18px; border-radius: 8px; font-weight: 600;">
+            Abrir painel
+          </a>
+        </p>
+      </div>
+    `,
+  })
+}

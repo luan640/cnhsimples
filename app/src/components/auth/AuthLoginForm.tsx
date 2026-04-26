@@ -45,9 +45,7 @@ export function AuthLoginForm({ role, nextPath }: AuthLoginFormProps) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: isStudent
-          ? `${window.location.origin}/login/aluno?oauth=return&next=${encodeURIComponent(resolvedNextPath)}`
-          : `${window.location.origin}${redirectPath}`,
+        redirectTo: `${window.location.origin}${isStudent ? '/login/aluno' : '/login/instrutor'}?oauth=return&next=${encodeURIComponent(resolvedNextPath)}`,
       },
     })
 
