@@ -82,7 +82,7 @@ function formatSlotLine(slot: { date: string; hour: number; minute: number | nul
 function getWhatsAppHref(phone: string | null | undefined, message: string) {
   const digits = (phone ?? '').replace(/\D/g, '')
   if (!digits) return null
-  return `https://wa.me/${digits}?text=${encodeURIComponent(message)}`
+  return `whatsapp://send?phone=${digits}&text=${encodeURIComponent(message)}`
 }
 
 function getNowInBookingTimezoneParts() {
