@@ -967,6 +967,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   const [slotRefreshError, setSlotRefreshError] = useState<string | null>(null)
   const [checkoutPhase, setCheckoutPhase] = useState<CheckoutPhase>('idle')
   const [successBookingGroupId, setSuccessBookingGroupId] = useState<string | null>(null)
+  const [successWhatsAppUrl, setSuccessWhatsAppUrl] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
 
   const selectedService = instructor.services.find((s) => s.id === selectedServiceId) ?? null
@@ -1225,7 +1226,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
 
         const result = (await response.json()) as { status?: string; whatsappUrl?: string | null }
         if (result.status === 'paid' && result.whatsappUrl) {
-          window.location.assign(result.whatsappUrl)
+          setSuccessWhatsAppUrl(result.whatsappUrl)
         }
       } catch {
         // keep success screen as fallback
@@ -1317,12 +1318,22 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
                 Seus horários foram reservados. O instrutor receberá a confirmação.
               </p>
             </div>
-            <Link
-              href="/aluno"
-              className="mt-2 inline-flex items-center gap-2 rounded-[9999px] bg-[#3ECF8E] px-6 py-3 text-sm font-semibold text-[#052E16] transition-opacity hover:opacity-90"
-            >
-              Ver meus agendamentos
-            </Link>
+            <div className="mt-2 flex w-full max-w-sm flex-col gap-3">
+              {successWhatsAppUrl ? (
+                <a
+                  href={successWhatsAppUrl}
+                  className="inline-flex items-center justify-center rounded-[9999px] bg-[#25D366] px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
+                >
+                  Conversar com instrutor
+                </a>
+              ) : null}
+              <Link
+                href="/aluno"
+                className="inline-flex items-center justify-center rounded-[9999px] bg-[#3ECF8E] px-6 py-3 text-sm font-semibold text-[#052E16] transition-opacity hover:opacity-90"
+              >
+                Minhas aulas
+              </Link>
+            </div>
           </div>
         )}
 

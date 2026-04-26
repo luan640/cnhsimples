@@ -219,7 +219,7 @@ export function LandingPage() {
           <div className="flex items-center gap-4">
             <Link
               href="/login/aluno"
-              className="hidden min-w-[170px] bg-[#f7cf11] px-7 py-4 text-center text-[12px] font-bold uppercase tracking-[0.18em] text-[#111111] lg:block"
+              className="min-w-[120px] bg-[#f7cf11] px-5 py-3 text-center text-[11px] font-bold uppercase tracking-[0.18em] text-[#111111] sm:min-w-[170px] sm:px-7 sm:py-4 sm:text-[12px]"
             >
               Entrar
             </Link>
