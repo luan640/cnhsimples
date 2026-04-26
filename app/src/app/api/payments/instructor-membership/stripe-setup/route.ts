@@ -80,7 +80,7 @@ export async function POST(_request: NextRequest) {
       items: [{ price: priceId }],
       payment_behavior: 'default_incomplete',
       payment_settings: { save_default_payment_method: 'on_subscription' },
-      expand: ['latest_invoice'],
+      expand: ['latest_invoice.confirmation_secret'],
       metadata: {
         instructor_id: profile.id,
         subscription_id: subscription.id,
@@ -89,7 +89,14 @@ export async function POST(_request: NextRequest) {
     })
 
     const invoice = stripeSubscription.latest_invoice as import('stripe').Stripe.Invoice | null
-    const clientSecret = invoice?.confirmation_secret?.client_secret ?? null
+    let clientSecret = invoice?.confirmation_secret?.client_secret ?? null
+
+    if (!clientSecret && invoice?.id) {
+      const hydratedInvoice = await stripe.invoices.retrieve(invoice.id, {
+        expand: ['confirmation_secret'],
+      })
+      clientSecret = hydratedInvoice.confirmation_secret?.client_secret ?? null
+    }
 
     if (!clientSecret) {
       return errorResponse('Stripe nao retornou o client secret.', 502)
