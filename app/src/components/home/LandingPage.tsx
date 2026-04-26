@@ -1,515 +1,580 @@
 import Image from 'next/image'
 import Link from 'next/link'
+import { Outfit } from 'next/font/google'
 import {
-  BadgeCheck,
-  CalendarDays,
-  Car,
-  CircleUserRound,
-  MapPin,
+  ChevronDown,
+  ChevronRight,
+  Menu,
   Search,
-  ShieldCheck,
-  Star,
-  Bike,
-  UserRoundPlus,
 } from 'lucide-react'
 
-type FeaturedInstructor = {
-  name: string
-  category: string
-  neighborhood: string
-  rating: number
-  reviews: number
-  price: number
-  image: string
-}
+const outfit = Outfit({
+  subsets: ['latin'],
+  weight: ['400', '500', '600', '700'],
+  display: 'swap',
+})
 
-const FEATURED_INSTRUCTORS: FeaturedInstructor[] = [
-  {
-    name: 'Ana Costa',
-    category: 'Categoria A',
-    neighborhood: 'Aldeota, Fortaleza',
-    rating: 4.9,
-    reviews: 27,
-    price: 60,
-    image:
-      'https://images.pexels.com/photos/3777946/pexels-photo-3777946.jpeg?auto=compress&cs=tinysrgb&w=900',
-  },
-  {
-    name: 'Ricardo Silva',
-    category: 'Categoria B',
-    neighborhood: 'Meireles, Fortaleza',
-    rating: 4.9,
-    reviews: 17,
-    price: 60,
-    image:
-      'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=900',
-  },
-  {
-    name: 'Juliana Lima',
-    category: 'Categoria A',
-    neighborhood: 'Papicu, Fortaleza',
-    rating: 4.9,
-    reviews: 77,
-    price: 60,
-    image:
-      'https://images.pexels.com/photos/3812743/pexels-photo-3812743.jpeg?auto=compress&cs=tinysrgb&w=900',
-  },
-  {
-    name: 'Juliana Lima',
-    category: 'Categoria A',
-    neighborhood: 'Aldeota, Fortaleza',
-    rating: 4.9,
-    reviews: 3,
-    price: 60,
-    image:
-      'https://images.pexels.com/photos/3812743/pexels-photo-3812743.jpeg?auto=compress&cs=tinysrgb&w=900',
-  },
-  {
-    name: 'Paulo Costa',
-    category: 'Categoria B',
-    neighborhood: 'Papicu, Fortaleza',
-    rating: 4.9,
-    reviews: 3,
-    price: 60,
-    image:
-      'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=900',
-  },
-  {
-    name: 'Ricardo Silva',
-    category: 'Categoria B',
-    neighborhood: 'Meireles, Fortaleza',
-    rating: 4.9,
-    reviews: 2,
-    price: 60,
-    image:
-      'https://images.pexels.com/photos/2379005/pexels-photo-2379005.jpeg?auto=compress&cs=tinysrgb&w=900',
-  },
-]
+const heroImage =
+  'https://images.pexels.com/photos/8867431/pexels-photo-8867431.jpeg?auto=compress&cs=tinysrgb&w=1200'
+const carImage =
+  'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=1200'
+const founderImage =
+  'https://images.pexels.com/photos/220453/pexels-photo-220453.jpeg?auto=compress&cs=tinysrgb&w=1200'
 
-const TRUST_ITEMS = [
-  { icon: Bike, label: 'Categoria A (Moto)' },
-  { icon: Car, label: 'Categoria B (Carro)' },
-  { icon: BadgeCheck, label: 'DETRAN-CE Certificado' },
-]
+function SocialIcon({ type }: { type: 'facebook' | 'twitter' | 'instagram' | 'linkedin' }) {
+  if (type === 'facebook') {
+    return (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M14 8h3V4h-3c-2.8 0-5 2.2-5 5v3H6v4h3v4h4v-4h3l1-4h-4V9c0-.6.4-1 1-1Z" fill="currentColor" />
+      </svg>
+    )
+  }
 
-const STEPS = [
-  {
-    icon: Search,
-    title: '1. Encontre seu instrutor',
-    description: 'Pesquise por localização, categoria e avaliações.',
-  },
-  {
-    icon: CalendarDays,
-    title: '2. Agende seu horário',
-    description: 'Escolha os melhores horários e reserve online com facilidade.',
-  },
-  {
-    icon: Car,
-    title: '3. Comece suas aulas',
-    description: 'Aprenda na prática com profissionais qualificados.',
-  },
-]
-
-const REVIEWS = [
-  {
-    name: 'Mariana',
-    text: 'Consegui marcar com uma instrutora perto de casa e resolver tudo sem autoescola tradicional.',
-  },
-  {
-    name: 'Pedro',
-    text: 'O agendamento ficou muito mais claro. Vi o valor, a localização e fechei a aula no mesmo dia.',
-  },
-  {
-    name: 'Fernanda',
-    text: 'Foi a primeira vez que senti confiança no processo. Plataforma limpa e instrutores bons de verdade.',
-  },
-]
-
-function formatBRL(value: number) {
-  return value.toLocaleString('pt-BR', {
-    style: 'currency',
-    currency: 'BRL',
-    minimumFractionDigits: 0,
-  })
-}
-
-function InstructorCard({ instructor }: { instructor: FeaturedInstructor }) {
-  return (
-    <article className="rounded-[18px] border border-[#E5E7EB] bg-white p-2.5 shadow-[0_18px_35px_rgba(15,23,42,0.08)] transition-transform duration-200 hover:-translate-y-0.5">
-      <div className="relative mb-3 aspect-[1.2/0.86] overflow-hidden rounded-[14px]">
-        <Image
-          src={instructor.image}
-          alt={instructor.name}
-          fill
-          className="object-cover"
-          sizes="(max-width: 768px) 100vw, (max-width: 1280px) 33vw, 16vw"
+  if (type === 'twitter') {
+    return (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M18.9 4H22l-6.8 7.8L23 20h-6.1l-4.8-5.2L7.6 20H4.5l7.2-8.2L4 4h6.2l4.3 4.8L18.9 4Z"
+          fill="currentColor"
         />
-        <button
-          type="button"
-          aria-label={`Salvar ${instructor.name}`}
-          className="absolute right-2 top-2 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/90 text-[#6B7280] shadow-sm"
-        >
-          <CircleUserRound size={14} />
-        </button>
-      </div>
+      </svg>
+    )
+  }
 
-      <div className="space-y-1 px-1 pb-1">
-        <h3 className="text-[1.02rem] font-bold tracking-tight text-[#111827]">{instructor.name}</h3>
-        <p className="text-xs font-semibold text-[#1D4ED8]">{instructor.category}</p>
-        <p className="flex items-center gap-1 text-xs text-[#374151]">
-          <Star size={12} className="fill-[#FBBF24] text-[#FBBF24]" />
-          {instructor.rating.toFixed(1)} ({instructor.reviews} reviews)
-        </p>
-        <p className="flex items-center gap-1 text-xs text-[#6B7280]">
-          <MapPin size={11} />
-          {instructor.neighborhood}
-        </p>
-        <p className="pt-1 text-sm font-bold text-[#111827]">
-          {formatBRL(instructor.price)}
-          <span className="font-semibold text-[#374151]">/aula</span>
-        </p>
-      </div>
-    </article>
+  if (type === 'instagram') {
+    return (
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <rect x="3" y="3" width="18" height="18" rx="5" stroke="currentColor" strokeWidth="2" />
+        <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+        <circle cx="17.5" cy="6.5" r="1.2" fill="currentColor" />
+      </svg>
+    )
+  }
+
+  return (
+    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path
+        d="M7 8a1 1 0 0 1 1-1h2.6a1 1 0 0 1 1 1v8a1 1 0 0 1-1 1H8a1 1 0 0 1-1-1V8Zm6 0a1 1 0 0 1 1-1h2.4a3.6 3.6 0 0 1 3.6 3.6V16a1 1 0 0 1-1 1h-2.6a1 1 0 0 1-1-1v-4.4c0-.8-.5-1.4-1.3-1.4-.8 0-1.3.6-1.3 1.4V16a1 1 0 0 1-1 1H14a1 1 0 0 1-1-1V8Z"
+        fill="currentColor"
+      />
+      <circle cx="9.3" cy="4.8" r="1.3" fill="currentColor" />
+    </svg>
   )
 }
 
-function AgendaMock() {
-  const rows = [
-    ['9:00', 'Livre', 'Livre', 'Ocupado', 'Livre', 'Livre'],
-    ['10:00', 'Ocupado', 'Livre', 'Livre', 'Livre', 'Ocupado'],
-    ['11:00', 'Livre', 'Livre', 'Livre', 'Ocupado', 'Livre'],
-    ['12:00', 'Livre', 'Ocupado', 'Livre', 'Livre', 'Livre'],
+function TopBar() {
+  return (
+    <div className="hidden bg-[#161518] text-white lg:block">
+      <div className="mx-auto flex max-w-[1200px] items-center justify-between px-8 py-3 text-[11px] font-medium uppercase tracking-[0.18em]">
+        <div className="flex items-center gap-2 text-[#f4c400]">
+          <span className="inline-block h-2 w-2 rounded-full bg-[#f4c400]" />
+          <span>Training Time: Hot Class 7am to 11am</span>
+        </div>
+
+        <div className="flex items-center gap-2 text-white/80">
+          <span className="text-[#f4c400]">◎</span>
+          <span>We have come closer to you: San Fransisco</span>
+          <ChevronRight size={12} className="text-[#f4c400]" />
+        </div>
+
+        <div className="flex items-center gap-3 text-white/80">
+          <span className="text-[11px] tracking-[0.2em] text-[#f4c400]">Social Media</span>
+          <SocialIcon type="facebook" />
+          <SocialIcon type="twitter" />
+          <SocialIcon type="instagram" />
+          <SocialIcon type="linkedin" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function BrandMark() {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="relative h-12 w-12 overflow-hidden rounded-full border border-[#d8d8d8] bg-[#f6c808] p-1.5">
+        <div className="flex h-full w-full items-center justify-center rounded-full bg-[#111111] text-[10px] font-bold uppercase tracking-[0.18em] text-white">
+          ud
+        </div>
+      </div>
+      <div className="text-[42px] font-semibold leading-none tracking-[-0.06em] text-[#121212]">
+        udrive
+      </div>
+    </div>
+  )
+}
+
+function HeroVisual({ src, alt, className = '' }: { src: string; alt: string; className?: string }) {
+  return (
+    <div
+      className={`relative overflow-hidden bg-[#efefef] ${className}`}
+      style={{
+        clipPath: 'polygon(0 0, 84% 0, 100% 18%, 100% 100%, 17% 100%, 0 82%)',
+      }}
+    >
+      <Image src={src} alt={alt} fill className="object-cover" sizes="(max-width: 1024px) 100vw, 520px" />
+    </div>
+  )
+}
+
+function NumberTabs() {
+  const items = [
+    { label: '01', active: false },
+    { label: '02', active: true },
+    { label: '03', active: false },
   ]
 
   return (
-    <div className="rounded-[18px] border border-white/70 bg-white/85 p-3 shadow-[0_18px_40px_rgba(29,78,216,0.12)] backdrop-blur">
-      <div className="mb-3 flex items-center justify-between border-b border-[#E5E7EB] pb-2">
-        <div className="flex gap-1.5">
-          <span className="h-2.5 w-2.5 rounded-full bg-[#FCA5A5]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#FCD34D]" />
-          <span className="h-2.5 w-2.5 rounded-full bg-[#86EFAC]" />
+    <div className="flex items-center gap-2">
+      {items.map((item) => (
+        <div
+          key={item.label}
+          className="flex h-12 w-12 items-center justify-center text-[14px] font-medium"
+          style={{
+            background: item.active ? '#f7cf11' : '#f5f5f5',
+            color: item.active ? '#111111' : '#8d8d8d',
+          }}
+        >
+          {item.label}
         </div>
-        <span className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#94A3B8]">
-          Agenda
-        </span>
-      </div>
+      ))}
+    </div>
+  )
+}
 
-      <div className="grid grid-cols-[52px_repeat(5,minmax(0,1fr))] gap-1.5 text-[10px]">
-        <div />
-        {['Seg', 'Ter', 'Qua', 'Qui', 'Sex'].map((day) => (
-          <div
-            key={day}
-            className="rounded-md bg-[#EFF6FF] px-1 py-1 text-center font-semibold text-[#1D4ED8]"
-          >
-            {day}
-          </div>
-        ))}
-        {rows.map(([hour, ...slots]) => (
-          <div key={hour} className="contents">
-            <div className="rounded-md bg-[#F8FAFC] px-1 py-2 text-center font-semibold text-[#64748B]">
-              {hour}
-            </div>
-            {slots.map((slot, index) => (
-              <div
-                key={`${hour}-${index}`}
-                className={`rounded-md px-1 py-2 text-center font-semibold ${
-                  slot === 'Livre'
-                    ? 'bg-[#DCFCE7] text-[#15803D]'
-                    : 'bg-[#E5E7EB] text-[#6B7280]'
-                }`}
-              >
-                {slot}
-              </div>
-            ))}
-          </div>
-        ))}
-      </div>
+function SocialButtons() {
+  const icons: Array<'facebook' | 'twitter' | 'linkedin'> = ['facebook', 'twitter', 'linkedin']
+  return (
+    <div className="flex items-center gap-2">
+      {icons.map((icon, index) => (
+        <div
+          key={index}
+          className="flex h-10 w-10 items-center justify-center rounded-full border border-[#ececec] text-[#8a8a8a]"
+        >
+          <SocialIcon type={icon} />
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function StarRow() {
+  return (
+    <div className="flex gap-1.5">
+      {Array.from({ length: 5 }).map((_, index) => (
+        <span key={index} className="h-2.5 w-2.5 bg-[#f7cf11]" />
+      ))}
     </div>
   )
 }
 
 export function LandingPage() {
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.15),_transparent_34%),linear-gradient(180deg,#f8fbff_0%,#eef5ff_48%,#f9fbff_100%)] px-3 py-4 text-[#111827] md:px-6 md:py-10">
-      <div className="mx-auto max-w-[1240px] rounded-[30px] border border-white/80 bg-white/92 p-3 shadow-[0_30px_80px_rgba(15,23,42,0.16)] backdrop-blur md:p-5">
-        <header className="mb-4 flex flex-wrap items-center justify-between gap-3 rounded-[22px] border border-[#E5E7EB] bg-white px-4 py-3 md:px-6">
-          <Link href="/" className="flex items-center gap-2 text-[#111827]">
-            <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-[#EEF2FF] text-[#1D4ED8]">
-              <Car size={16} />
-            </span>
-            <span className="text-lg font-extrabold tracking-tight">
-              Direção<span className="text-[#1D4ED8]">Fácil</span>
-            </span>
-          </Link>
+    <div className={`${outfit.className} min-h-screen bg-[#fbfbfb] text-[#101010]`}>
+      <TopBar />
 
-          <nav className="hidden items-center gap-7 text-sm font-medium text-[#374151] lg:flex">
-            <Link href="/buscar" className="transition-colors hover:text-[#1D4ED8]">
-              Encontrar Instrutor
+      <header className="bg-white">
+        <div className="mx-auto flex max-w-[1200px] items-center justify-between px-6 py-7 lg:px-8">
+          <BrandMark />
+
+          <nav className="hidden items-center gap-7 text-[12px] font-semibold uppercase tracking-[0.18em] text-[#1a1a1a] xl:flex">
+            <Link href="/" className="flex items-center gap-1">
+              Home <ChevronDown size={12} />
             </Link>
-            <Link href="/como-funciona" className="transition-colors hover:text-[#1D4ED8]">
-              Como Funciona
+            <Link href="/" className="flex items-center gap-1">
+              About <ChevronDown size={12} />
             </Link>
-            <Link href="/cadastro/instrutor" className="transition-colors hover:text-[#1D4ED8]">
-              Para Instrutores
+            <Link href="/" className="flex items-center gap-1">
+              Courses <ChevronDown size={12} />
             </Link>
-            <Link href="/login/aluno" className="transition-colors hover:text-[#1D4ED8]">
-              Login
+            <Link href="/" className="flex items-center gap-1">
+              Services <ChevronDown size={12} />
             </Link>
-            <Link
-              href="/cadastro/aluno"
-              className="rounded-[10px] bg-[#111827] px-4 py-2 text-white transition-opacity hover:opacity-90"
-            >
-              Cadastre-se
+            <Link href="/" className="flex items-center gap-1">
+              Blog <ChevronDown size={12} />
             </Link>
+            <Link href="/">Contact</Link>
           </nav>
 
-          <div className="flex items-center gap-2 lg:hidden">
-            <Link
-              href="/login/aluno"
-              className="rounded-[10px] border border-[#D1D5DB] px-3 py-2 text-sm font-medium text-[#111827]"
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              aria-label="Search"
+              className="hidden h-11 w-11 items-center justify-center text-[#141414] lg:flex"
             >
-              Login
-            </Link>
-            <Link
-              href="/buscar"
-              className="rounded-[10px] bg-[#111827] px-3 py-2 text-sm font-medium text-white"
+              <Search size={17} strokeWidth={2} />
+            </button>
+            <button
+              type="button"
+              aria-label="Menu"
+              className="flex h-11 w-11 items-center justify-center text-[#141414]"
             >
-              Buscar
+              <Menu size={24} strokeWidth={1.8} />
+            </button>
+            <Link
+              href="/login/instrutor"
+              className="hidden min-w-[170px] bg-[#f7cf11] px-7 py-4 text-center text-[12px] font-bold uppercase tracking-[0.18em] text-[#111111] lg:block"
+            >
+              Consultation
             </Link>
           </div>
-        </header>
+        </div>
+      </header>
 
-        <main className="space-y-5">
-          <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[26px] border border-[#E5E7EB] bg-white p-3 shadow-[0_18px_45px_rgba(15,23,42,0.06)] md:p-4">
-              <div className="relative overflow-hidden rounded-[20px]">
-                <div className="relative min-h-[420px] md:min-h-[510px]">
-                  <Image
-                    src="https://images.pexels.com/photos/8867431/pexels-photo-8867431.jpeg?auto=compress&cs=tinysrgb&w=1400"
-                    alt="Aluna dirigindo com instrutor"
-                    fill
-                    priority
-                    className="object-cover"
-                    sizes="(max-width: 1280px) 100vw, 55vw"
-                  />
-                  <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(15,23,42,0.18),rgba(15,23,42,0.62))]" />
+      <main>
+        <section className="bg-white">
+          <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-12 px-6 py-6 pb-20 lg:grid-cols-[1.05fr_1fr] lg:px-8 lg:pt-2">
+            <div className="flex flex-col justify-center pt-8 lg:pt-16">
+              <h1 className="max-w-[420px] text-[54px] font-semibold leading-[0.98] tracking-[-0.06em] text-[#131313] md:text-[78px]">
+                Fast Track Driving Lessons
+              </h1>
 
-                  <div className="absolute inset-x-0 top-0 flex justify-center px-5 pt-8 md:px-10 md:pt-12">
-                    <div className="max-w-[560px] text-center text-white">
-                      <h1 className="text-[2rem] font-extrabold leading-[1.05] tracking-tight text-white md:text-[3.35rem]">
-                        Aprenda a dirigir com instrutores certificados perto de você
-                      </h1>
-                      <p className="mt-4 text-sm leading-6 text-white/88 md:text-base">
-                        Flexibilidade de horários, segurança e a melhor experiência de aprendizagem
-                        na sua região. Comece hoje mesmo.
-                      </p>
-                    </div>
-                  </div>
+              <p className="mt-8 max-w-[330px] text-[14px] leading-7 text-[#9c9c9c]">
+                Idea of denouncing pleasure and praising pain was born and we will give you a complete.
+              </p>
 
-                  <div className="absolute inset-x-0 bottom-0 px-4 pb-4 md:px-8 md:pb-7">
-                    <form
-                      action="/buscar"
-                      className="mx-auto flex max-w-[470px] items-center gap-3 rounded-full border border-white/70 bg-white px-4 py-3 shadow-[0_15px_30px_rgba(15,23,42,0.18)]"
-                    >
-                      <Search size={18} className="shrink-0 text-[#9CA3AF]" />
-                      <input
-                        type="text"
-                        name="q"
-                        placeholder="Busque por bairro ou nome do instrutor..."
-                        className="min-w-0 flex-1 bg-transparent text-sm text-[#111827] outline-none placeholder:text-[#9CA3AF]"
-                      />
-                      <button
-                        type="submit"
-                        className="rounded-full bg-[#111827] px-4 py-2 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                      >
-                        Buscar
-                      </button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4 flex flex-wrap items-center justify-center gap-2 border-t border-[#E5E7EB] pt-4">
-                {TRUST_ITEMS.map(({ icon: Icon, label }) => (
-                  <Link
-                    key={label}
-                    href="/buscar"
-                    className="inline-flex items-center gap-2 rounded-full border border-[#E5E7EB] bg-[#F9FAFB] px-3 py-2 text-xs font-semibold text-[#374151] transition-colors hover:border-[#BFDBFE] hover:bg-[#EFF6FF]"
-                  >
-                    <Icon size={14} className="text-[#1D4ED8]" />
-                    {label}
-                  </Link>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-5">
-              <section className="rounded-[26px] border border-[#E5E7EB] bg-[linear-gradient(180deg,#ffffff_0%,#fbfdff_100%)] p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <h2 className="text-[1.65rem] font-extrabold tracking-tight text-[#111827]">
-                      Instrutores em Destaque em Fortaleza
-                    </h2>
-                    <p className="mt-1 text-sm text-[#6B7280]">
-                      Perfis aprovados, próximos e com agenda online.
-                    </p>
-                  </div>
-                  <Link href="/buscar" className="hidden text-sm font-semibold text-[#1D4ED8] md:block">
-                    Ver todos
-                  </Link>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-3 xl:grid-cols-3">
-                  {FEATURED_INSTRUCTORS.slice(0, 3).map((instructor) => (
-                    <InstructorCard
-                      key={`${instructor.name}-${instructor.neighborhood}`}
-                      instructor={instructor}
-                    />
-                  ))}
-                </div>
-              </section>
-
-              <section className="rounded-[26px] border border-[#DCEBFF] bg-[radial-gradient(circle_at_top,_rgba(255,255,255,0.85),_rgba(239,246,255,0.94)_52%,_rgba(219,234,254,0.92)_100%)] p-6 shadow-[0_18px_45px_rgba(59,130,246,0.08)]">
-                <div className="text-center">
-                  <h2 className="text-[1.75rem] font-extrabold tracking-tight text-[#111827]">
-                    How It Works
-                  </h2>
-                </div>
-
-                <div className="mt-7 grid gap-5 md:grid-cols-3">
-                  {STEPS.map(({ icon: Icon, title, description }) => (
-                    <div key={title} className="text-center">
-                      <div className="mx-auto inline-flex h-14 w-14 items-center justify-center rounded-full border border-[#BFDBFE] bg-white text-[#1D4ED8] shadow-sm">
-                        <Icon size={25} />
-                      </div>
-                      <h3 className="mt-4 text-base font-extrabold text-[#111827]">{title}</h3>
-                      <p className="mt-2 text-sm leading-6 text-[#4B5563]">{description}</p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="mt-8 grid items-center gap-6 rounded-[22px] bg-white/60 p-5 md:grid-cols-[0.9fr_1.1fr]">
-                  <div>
-                    <h3 className="text-[1.35rem] font-extrabold tracking-tight text-[#111827]">
-                      Agendamento Descomplicado
-                    </h3>
-                    <p className="mt-2 text-sm leading-6 text-[#4B5563]">
-                      Escolha as práticas com profissionais e visualize a agenda qualificada.
-                    </p>
-                  </div>
-                  <AgendaMock />
-                </div>
-              </section>
-            </div>
-          </section>
-
-          <section className="grid gap-5 xl:grid-cols-[1.25fr_0.75fr]">
-            <div className="rounded-[26px] border border-[#E5E7EB] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
-              <div className="mb-5 flex items-center justify-between gap-3">
-                <div>
-                  <h2 className="text-[1.7rem] font-extrabold tracking-tight text-[#111827]">
-                    Instrutores em Destaque em Fortaleza
-                  </h2>
-                  <p className="mt-1 text-sm text-[#6B7280]">
-                    Veja preço, avaliações e bairro antes de decidir.
-                  </p>
-                </div>
-                <Link href="/buscar" className="hidden text-sm font-semibold text-[#1D4ED8] md:block">
-                  Explorar
+              <div className="mt-10">
+                <Link
+                  href="/buscar"
+                  className="inline-flex bg-[#121212] px-8 py-4 text-[12px] font-bold uppercase tracking-[0.18em] text-white"
+                  style={{ boxShadow: '8px 8px 0 #e9e9e9' }}
+                >
+                  Test Vehicle
                 </Link>
               </div>
+            </div>
 
-              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {FEATURED_INSTRUCTORS.map((instructor, index) => (
-                  <InstructorCard key={`${instructor.name}-${index}`} instructor={instructor} />
-                ))}
+            <div className="flex flex-col items-center gap-8 lg:items-end">
+              <HeroVisual src={heroImage} alt="Motorista sorrindo dentro do carro" className="h-[320px] w-full max-w-[540px] md:h-[420px]" />
+              <div className="w-full max-w-[540px] pr-0 lg:pr-3">
+                <div className="flex justify-center lg:justify-end">
+                  <NumberTabs />
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-[#fbfbfb]">
+          <div className="mx-auto max-w-[1200px] px-6 py-10 pb-24 lg:px-8 lg:py-16 lg:pb-28">
+            <div className="grid grid-cols-1 gap-10 lg:grid-cols-[1.2fr_0.95fr]">
+              <div>
+                <h2 className="max-w-[580px] text-[40px] font-semibold leading-[1.05] tracking-[-0.05em] text-[#141414] md:text-[58px]">
+                  A perfect driving school with latest vehicles
+                </h2>
+
+                <div className="mt-10 grid grid-cols-1 gap-8 md:grid-cols-[0.92fr_1.08fr]">
+                  <HeroVisual src={carImage} alt="Carro na estrada" className="h-[300px] md:h-[340px]" />
+
+                  <div className="flex flex-col justify-between gap-6">
+                    <div>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#1a1a1a]">Since</p>
+                      <div className="mt-3 flex items-center gap-4">
+                        <span className="text-[56px] font-semibold leading-none tracking-[-0.06em] text-[#111111]">
+                          2006
+                        </span>
+                        <div className="flex gap-1.5 pt-1">
+                          {Array.from({ length: 5 }).map((_, index) => (
+                            <span
+                              key={index}
+                              className="block h-3 w-6"
+                              style={{
+                                background: '#f6c808',
+                                clipPath: 'polygon(0 0, 68% 0, 100% 50%, 68% 100%, 0 100%, 28% 50%)',
+                              }}
+                            />
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-5 text-[14px] leading-7 text-[#8d8d8d]">
+                      <p>
+                        Expire to you how all this mistaken denouncing pleasure and praising pain was born and we will give
+                        you a complete account of the system and expound the actual teachings.
+                      </p>
+                      <p>
+                        Mistaken denouncing pleasure and praising pain was born and we will give you complete account of the
+                        system anyone.
+                      </p>
+                    </div>
+
+                    <div className="flex items-end justify-between gap-6 border-t border-[#ececec] pt-6">
+                      <div>
+                        <div className="text-[48px] leading-none text-[#131313]">~</div>
+                        <div className="mt-4">
+                          <p className="text-[18px] font-semibold text-[#111111]">Isaac Herman</p>
+                          <p className="text-[12px] uppercase tracking-[0.18em] text-[#9a9a9a]">Founder</p>
+                        </div>
+                      </div>
+
+                      <Link
+                        href="/buscar"
+                        className="inline-flex bg-[#111111] px-8 py-4 text-[12px] font-bold uppercase tracking-[0.18em] text-white"
+                      >
+                        Read More
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col items-start gap-6 lg:items-end">
+                <HeroVisual
+                  src={founderImage}
+                  alt="Homem de terno sorrindo dentro do carro"
+                  className="h-[340px] w-full max-w-[380px] md:h-[430px]"
+                />
+
+                <div className="w-full max-w-[380px] bg-white px-7 py-6">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-[#8f8f8f]">Follow Me On</p>
+                  <div className="mt-4">
+                    <SocialButtons />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="bg-white">
+          <div className="mx-auto grid max-w-[1200px] grid-cols-1 gap-10 px-6 py-10 lg:grid-cols-[1.05fr_1fr] lg:px-8">
+            <div className="flex items-start gap-6">
+              <div className="h-16 w-1 bg-[#111111]" />
+              <div>
+                <p className="text-[13px] font-semibold uppercase tracking-[0.18em] text-[#1a1a1a]">our learners</p>
+                <div className="mt-5 inline-flex items-center gap-3 bg-[#111111] px-5 py-4 text-white">
+                  <span className="inline-flex h-9 w-9 items-center justify-center bg-[#f7cf11] text-[12px] font-bold text-[#111111]">
+                    ▶
+                  </span>
+                  <div>
+                    <p className="text-[13px] font-semibold">Download Course Content</p>
+                    <p className="mt-1 text-[11px] uppercase tracking-[0.16em] text-white/55">PDF and Kit</p>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="space-y-5">
-              <section className="rounded-[26px] border border-[#E5E7EB] bg-[linear-gradient(135deg,#9FE8C8_0%,#A7F3D0_18%,#D9F99D_100%)] p-6 shadow-[0_18px_45px_rgba(16,185,129,0.14)]">
-                <div className="rounded-[22px] bg-white/35 p-6 backdrop-blur">
-                  <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#047857] shadow-sm">
-                    <UserRoundPlus size={22} />
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-[160px_1fr]">
+              <div className="relative mx-auto h-[170px] w-[110px]">
+                <div className="absolute left-1/2 top-0 h-full w-[88px] -translate-x-1/2 rounded-[30px] bg-[#f7cf11]" />
+                <div className="absolute left-1/2 top-3 h-[146px] w-[66px] -translate-x-1/2 rounded-[18px] bg-[#1e3a5f]" />
+                <div className="absolute left-1/2 top-[22px] h-[102px] w-[42px] -translate-x-1/2 rounded-[12px] bg-[#16314c]" />
+              </div>
+
+              <ul className="space-y-3 pt-3 text-[13px] leading-7 text-[#606060]">
+                <li className="flex items-center gap-3"><span className="h-2 w-2 bg-[#f7cf11]" />Traffic Signs & Control Devices</li>
+                <li className="flex items-center gap-3"><span className="h-2 w-2 bg-[#f7cf11]" />Rules of the Road</li>
+                <li className="flex items-center gap-3"><span className="h-2 w-2 bg-[#f7cf11]" />Defensive Driving and Road Tests</li>
+                <li className="flex items-center gap-3"><span className="h-2 w-2 bg-[#f7cf11]" />Driving in Dangerous Conditions</li>
+                <li className="flex items-center gap-3"><span className="h-2 w-2 bg-[#f7cf11]" />Emergency Accident</li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <section className="relative overflow-hidden bg-[#151515]">
+          <div className="absolute inset-0 opacity-20">
+            <Image src={founderImage} alt="" fill className="object-cover object-left" sizes="100vw" />
+          </div>
+          <div className="absolute inset-0 bg-[#111111]/85" />
+          <div className="relative mx-auto grid max-w-[1200px] grid-cols-1 gap-8 px-6 py-16 lg:grid-cols-[0.9fr_1.1fr] lg:px-8">
+            <div className="max-w-[320px] text-white">
+              <h3 className="text-[42px] font-semibold leading-[1] tracking-[-0.05em]">Reviews & Testimonials</h3>
+              <p className="mt-5 text-[14px] leading-7 text-white/65">
+                Hear the inspiring experience of our older students and discover why learners prefer this school.
+              </p>
+              <div className="mt-6">
+                <StarRow />
+              </div>
+              <p className="mt-4 text-[12px] uppercase tracking-[0.14em] text-white/65">Trust Score 4.5 | 3,500 reviewed</p>
+              <div className="mt-8">
+                <Link
+                  href="/buscar"
+                  className="inline-flex bg-white px-7 py-4 text-[12px] font-bold uppercase tracking-[0.18em] text-[#111111]"
+                >
+                  All Reviews
+                </Link>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+              {[
+                {
+                  title: 'This is the Best Driving School in City',
+                  text: 'Professional instructors with calm teaching style and modern lessons for complete confidence on road.',
+                  name: 'Brett Daniels',
+                },
+                {
+                  title: 'Great Experience with Udrive Team',
+                  text: 'Everything from first class to final road preparation felt practical, structured and encouraging.',
+                  name: 'Mia Isabella',
+                },
+              ].map((item) => (
+                <div
+                  key={item.title}
+                  className="border border-white/12 bg-[#1b1b1b] p-7 text-white"
+                  style={{ clipPath: 'polygon(0 0, 88% 0, 100% 14%, 100% 100%, 0 100%)' }}
+                >
+                  <StarRow />
+                  <h4 className="mt-6 text-[24px] font-semibold leading-[1.08] tracking-[-0.04em]">{item.title}</h4>
+                  <p className="mt-4 text-[13px] leading-7 text-white/62">{item.text}</p>
+                  <div className="mt-6 flex items-center gap-3 border-t border-white/10 pt-5">
+                    <div className="relative h-11 w-11 overflow-hidden rounded-full">
+                      <Image src={founderImage} alt={item.name} fill className="object-cover" sizes="44px" />
+                    </div>
+                    <div>
+                      <p className="text-[14px] font-semibold">{item.name}</p>
+                      <p className="text-[11px] uppercase tracking-[0.16em] text-white/45">Happy Learner</p>
+                    </div>
                   </div>
-                  <h2 className="mt-4 text-[1.9rem] font-extrabold leading-tight tracking-tight text-[#111827]">
-                    Você é instrutor de trânsito?
-                    <br />
-                    Junte-se à nossa comunidade!
-                  </h2>
-                  <p className="mt-3 text-sm leading-6 text-[#1F2937]">
-                    Cadastre seu perfil, organize sua agenda e receba alunos da sua região.
-                  </p>
-                  <Link
-                    href="/cadastro/instrutor"
-                    className="mt-5 inline-flex rounded-[12px] bg-[#111827] px-5 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
-                  >
-                    Registrar como Instrutor
-                  </Link>
                 </div>
-              </section>
+              ))}
+            </div>
+          </div>
+        </section>
 
-              <section className="rounded-[26px] border border-[#E5E7EB] bg-white p-5 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
-                <div className="mb-4 flex items-center justify-between">
-                  <h2 className="text-[1.45rem] font-extrabold tracking-tight text-[#111827]">
-                    Depoimentos
-                  </h2>
-                  <span className="rounded-full bg-[#EFF6FF] px-3 py-1 text-xs font-bold text-[#1D4ED8]">
-                    4.9 de média
-                  </span>
-                </div>
+        <section className="bg-white">
+          <div className="mx-auto max-w-[1200px] px-6 py-16 lg:px-8 lg:py-20">
+            <div className="text-center">
+              <h3 className="text-[38px] font-semibold tracking-[-0.05em] text-[#111111] md:text-[48px]">
+                Latest form our blog post
+              </h3>
+            </div>
 
-                <div className="space-y-3">
-                  {REVIEWS.map((review) => (
-                    <div
-                      key={review.name}
-                      className="rounded-[18px] border border-[#E5E7EB] bg-[#F9FAFB] p-4"
-                    >
-                      <div className="mb-2 flex items-center gap-1">
-                        {Array.from({ length: 5 }).map((_, index) => (
-                          <Star key={index} size={14} className="fill-[#FBBF24] text-[#FBBF24]" />
-                        ))}
+            <div className="mt-12 grid grid-cols-1 gap-6 md:grid-cols-3">
+              {[
+                {
+                  image: carImage,
+                  title: 'Driving tips that make you a far better driver',
+                },
+                {
+                  image: heroImage,
+                  title: 'Description need to know local parking',
+                },
+                {
+                  image: founderImage,
+                  title: 'Best roads to practice driving in urban areas',
+                },
+              ].map((post, index) => (
+                <article key={index} className="bg-white">
+                  <div className="relative h-[210px] overflow-hidden">
+                    <Image src={post.image} alt={post.title} fill className="object-cover" sizes="(max-width: 768px) 100vw, 33vw" />
+                    <span className="absolute left-0 top-0 bg-[#f7cf11] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#111111]">
+                      Option Tips
+                    </span>
+                  </div>
+                  <div className="border border-t-0 border-[#efefef] px-5 py-5">
+                    <h4 className="text-[20px] font-semibold leading-[1.12] tracking-[-0.04em] text-[#111111]">
+                      {post.title}
+                    </h4>
+                    <div className="mt-4 flex items-center gap-4 text-[11px] uppercase tracking-[0.14em] text-[#999999]">
+                      <span>27 April, 2026</span>
+                      <span>0 Comments</span>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="overflow-hidden bg-[#fbfbfb]">
+          <div className="mx-auto max-w-[1200px] px-6 py-8 lg:px-8">
+            <div className="relative overflow-hidden bg-white px-6 py-12 lg:px-10 lg:py-14">
+              <div className="absolute left-0 top-0 h-20 w-32 bg-[#f4f4f4]" style={{ clipPath: 'polygon(0 0, 100% 0, 58% 100%, 0 100%)' }} />
+              <div className="absolute right-0 top-0 h-full w-[38%] bg-[#f7cf11]" style={{ clipPath: 'polygon(28% 0, 100% 0, 100% 100%, 0 100%)' }} />
+              <div className="absolute left-[44%] top-1/2 z-10 hidden -translate-x-1/2 -translate-y-1/2 text-[86px] font-bold tracking-[-0.08em] text-[#111111] lg:block">
+                TKE
+              </div>
+
+              <div className="relative z-20 grid grid-cols-1 gap-5 md:grid-cols-3">
+                {[
+                  { title: 'Learn Traffic Signs', image: carImage },
+                  { title: "Don't Miss Anything", image: heroImage },
+                  { title: 'Drive with More Control', image: founderImage },
+                ].map((card, index) => (
+                  <div key={index} className="overflow-hidden bg-[#111111] text-white">
+                    <div className="relative h-[220px]">
+                      <Image src={card.image} alt={card.title} fill className="object-cover opacity-80" sizes="(max-width: 768px) 100vw, 33vw" />
+                    </div>
+                    <div className="flex items-center justify-between bg-[#111111] px-5 py-5">
+                      <div>
+                        <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-full bg-[#f7cf11] text-[13px] font-bold text-[#111111]">
+                          {index + 1}
+                        </div>
+                        <p className="text-[28px] font-semibold leading-[1] tracking-[-0.05em]">{card.title}</p>
                       </div>
-                      <p className="text-sm leading-6 text-[#374151]">{review.text}</p>
-                      <p className="mt-3 text-sm font-bold text-[#111827]">{review.name}</p>
+                      <span className="inline-flex h-10 w-10 items-center justify-center bg-[#f7cf11] text-[#111111]">↗</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <footer className="bg-[#161616] text-white">
+          <div className="mx-auto max-w-[1200px] px-6 py-14 lg:px-8">
+            <div className="grid grid-cols-1 gap-12 md:grid-cols-[1.1fr_0.8fr_0.8fr_1fr]">
+              <div>
+                <div className="flex items-center gap-3">
+                  <div className="relative h-10 w-10 overflow-hidden rounded-full border border-white/10 bg-[#f6c808] p-1.5">
+                    <div className="flex h-full w-full items-center justify-center rounded-full bg-[#111111] text-[9px] font-bold uppercase tracking-[0.16em] text-white">
+                      ud
+                    </div>
+                  </div>
+                  <div className="text-[30px] font-semibold tracking-[-0.06em]">udrive</div>
+                </div>
+                <p className="mt-5 max-w-[260px] text-[13px] leading-7 text-white/55">
+                  Teach driving with proper rules and regulations. Structure focused lessons and practical road confidence.
+                </p>
+                <p className="mt-6 text-[12px] uppercase tracking-[0.16em] text-white/35">Office</p>
+                <p className="mt-2 text-[13px] text-white/60">25 Main Road, San Fransisco, CA</p>
+              </div>
+
+              <div>
+                <h4 className="text-[14px] font-semibold uppercase tracking-[0.18em] text-white">Our Company</h4>
+                <ul className="mt-5 space-y-3 text-[13px] text-white/55">
+                  <li>About Us</li>
+                  <li>Lessons</li>
+                  <li>Driving Services</li>
+                  <li>Pricing Plans</li>
+                  <li>City Coverage</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-[14px] font-semibold uppercase tracking-[0.18em] text-white">Essential Links</h4>
+                <ul className="mt-5 space-y-3 text-[13px] text-white/55">
+                  <li>Book Now</li>
+                  <li>Blog Articles</li>
+                  <li>Traffic Rules</li>
+                  <li>Safety Guides</li>
+                  <li>Road Tests</li>
+                </ul>
+              </div>
+
+              <div>
+                <h4 className="text-[14px] font-semibold uppercase tracking-[0.18em] text-white">Gallery Images</h4>
+                <div className="mt-5 grid grid-cols-3 gap-2">
+                  {[heroImage, founderImage, carImage, carImage, heroImage, founderImage].map((src, index) => (
+                    <div key={index} className="relative h-[72px] overflow-hidden bg-white/5">
+                      <Image src={src} alt="" fill className="object-cover" sizes="72px" />
                     </div>
                   ))}
                 </div>
-              </section>
-            </div>
-          </section>
-        </main>
-
-        <footer className="mt-5 rounded-[24px] border border-[#E5E7EB] bg-white px-5 py-4">
-          <div className="flex flex-col gap-4 text-sm text-[#4B5563] lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap items-center gap-4">
-              <span className="inline-flex items-center gap-2 font-semibold text-[#111827]">
-                <ShieldCheck size={15} className="text-[#94A3B8]" />
-                Pagamento Seguro
-              </span>
-              <span className="inline-flex items-center gap-2 font-semibold text-[#111827]">
-                <BadgeCheck size={15} className="text-[#16A34A]" />
-                DETRAN-CE Aprovado
-              </span>
+              </div>
             </div>
 
-            <div className="flex flex-wrap items-center gap-4">
-              <Link href="#" className="transition-colors hover:text-[#1D4ED8]">
-                Sobre Nós
-              </Link>
-              <Link href="#" className="transition-colors hover:text-[#1D4ED8]">
-                Termos de Uso
-              </Link>
-              <Link href="#" className="transition-colors hover:text-[#1D4ED8]">
-                Política de Privacidade
-              </Link>
-              <Link href="#" className="transition-colors hover:text-[#1D4ED8]">
-                Contato
-              </Link>
+            <div className="mt-10 flex flex-col gap-3 border-t border-white/10 pt-5 text-[11px] uppercase tracking-[0.16em] text-white/35 md:flex-row md:items-center md:justify-between">
+              <span>Privacy Policy</span>
+              <span>Terms & Conditions</span>
+              <span>Corporate Policy</span>
             </div>
           </div>
         </footer>
-      </div>
+      </main>
     </div>
   )
 }
