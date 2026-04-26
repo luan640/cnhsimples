@@ -8,7 +8,7 @@ import {
   createInstructorSubscription,
   getInstructorMembershipAmount,
 } from '@/lib/instructors/subscriptions'
-import { getMercadoPagoPreApprovalClient } from '@/lib/mercadopago/client'
+import { getMercadoPagoPreApprovalPlanClient } from '@/lib/mercadopago/client'
 
 function getErrorMessage(error: unknown) {
   if (error instanceof Error && error.message.trim()) {
@@ -45,38 +45,7 @@ function getErrorMessage(error: unknown) {
   return 'Falha ao iniciar pagamento da mensalidade.'
 }
 
-async function createPreApprovalForSubscription(params: {
-  externalReference: string
-  payerEmail: string
-  appUrl: string
-}): Promise<{ preApprovalId: string; checkoutUrl: string }> {
-  const preApprovalPlanId = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID?.trim()
-
-  if (!preApprovalPlanId) {
-    throw new Error('MERCADO_PAGO_PREAPPROVAL_PLAN_ID nao configurado.')
-  }
-
-  const preApprovalClient = getMercadoPagoPreApprovalClient()
-  const preApproval = await preApprovalClient.create({
-    body: {
-      preapproval_plan_id: preApprovalPlanId,
-      external_reference: params.externalReference,
-      back_url: `${params.appUrl}/api/payments/instructor-membership/return`,
-      payer_email: params.payerEmail,
-    },
-  })
-
-  if (!preApproval.id || !preApproval.init_point) {
-    throw new Error('Mercado Pago nao retornou os dados do checkout da assinatura.')
-  }
-
-  return {
-    preApprovalId: preApproval.id,
-    checkoutUrl: preApproval.init_point,
-  }
-}
-
-async function resolveCheckout(requestUrl: string) {
+async function resolveCheckout() {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
@@ -101,20 +70,35 @@ async function resolveCheckout(requestUrl: string) {
     }
   }
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(requestUrl).origin
-
   try {
     const amount = getInstructorMembershipAmount()
+    const preApprovalPlanId = process.env.MERCADO_PAGO_PREAPPROVAL_PLAN_ID?.trim() || null
+
+    if (!preApprovalPlanId) {
+      return {
+        error: 'MERCADO_PAGO_PREAPPROVAL_PLAN_ID nao configurado.',
+        status: 500 as const,
+      }
+    }
+
+    const preApprovalPlanClient = getMercadoPagoPreApprovalPlanClient()
+    const plan = await preApprovalPlanClient.get({ preApprovalPlanId })
+    const checkoutUrl = plan.init_point
+
+    if (!checkoutUrl) {
+      return {
+        error: 'Mercado Pago nao retornou a URL do checkout do plano.',
+        status: 502 as const,
+      }
+    }
+
     const checkoutState = await getCheckoutEligibleInstructorSubscription(profile.id)
 
     if (checkoutState.kind === 'approved') {
       return { error: 'Sua assinatura ja esta ativa.', status: 409 as const }
     }
 
-    // Reuse existing pending preapproval if one was already created
-    if (checkoutState.kind === 'pending' && checkoutState.subscription.mp_preference_id) {
-      const checkoutUrl = checkoutState.subscription.payment_url ?? ''
-
+    if (checkoutState.kind === 'pending') {
       return {
         ok: true,
         checkoutUrl,
@@ -123,11 +107,7 @@ async function resolveCheckout(requestUrl: string) {
       } as const
     }
 
-    // Use existing pending subscription record or create a new one
-    const subscription =
-      checkoutState.kind === 'pending'
-        ? checkoutState.subscription
-        : await createInstructorSubscription(profile.id, amount)
+    const subscription = await createInstructorSubscription(profile.id, amount)
 
     if (!subscription) {
       return {
@@ -136,15 +116,8 @@ async function resolveCheckout(requestUrl: string) {
       }
     }
 
-    const payerEmail = user.email ?? ''
-    const { preApprovalId, checkoutUrl } = await createPreApprovalForSubscription({
-      externalReference: subscription.external_reference,
-      payerEmail,
-      appUrl,
-    })
-
     await attachPreApprovalToSubscription(subscription.id, {
-      preApprovalId,
+      preApprovalId: null,
       paymentUrl: checkoutUrl,
     })
 
@@ -162,8 +135,8 @@ async function resolveCheckout(requestUrl: string) {
   }
 }
 
-export async function POST(request: Request) {
-  const result = await resolveCheckout(request.url)
+export async function POST() {
+  const result = await resolveCheckout()
 
   if ('error' in result) {
     return NextResponse.json({ error: result.error }, { status: result.status })
@@ -173,7 +146,7 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  const result = await resolveCheckout(request.url)
+  const result = await resolveCheckout()
 
   if ('error' in result) {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? new URL(request.url).origin
