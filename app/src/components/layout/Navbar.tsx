@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Menu, X, Car } from 'lucide-react'
+import { Menu, X } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 
@@ -67,26 +68,31 @@ export function Navbar() {
 
   return (
     <header
-      className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
+      className="fixed left-0 right-0 top-0 z-50 transition-all duration-300"
       style={{
-        background: scrolled ? '#1c1c1c' : 'transparent',
-        borderBottom: scrolled ? '1px solid #333333' : 'none',
+        background: scrolled ? 'rgba(255, 255, 255, 0.96)' : 'rgba(255, 255, 255, 0.92)',
+        borderBottom: '1px solid rgba(226, 232, 240, 0.95)',
+        backdropFilter: 'blur(14px)',
       }}
     >
-      <nav className="max-w-7xl mx-auto px-4 md:px-6 h-16 flex items-center justify-between">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 font-semibold text-white text-lg">
-          <div className="w-8 h-8 rounded-[6px] flex items-center justify-center" style={{ background: '#3ECF8E' }}>
-            <Car size={18} color="#0F172A" />
+      <nav className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 md:px-6">
+        <Link href="/" className="flex items-center">
+          <div className="relative h-11 w-[148px] md:h-12 md:w-[164px]">
+            <Image
+              src="/brand-logo.png"
+              alt="CNH Simples"
+              fill
+              className="object-contain object-left"
+              sizes="164px"
+              priority
+            />
           </div>
-          <span>CNH Simples</span>
         </Link>
 
-        {/* Desktop nav */}
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden items-center gap-2 md:flex">
           <Link
             href="/buscar"
-            className="text-sm text-white/80 hover:text-white px-4 py-2 rounded-[6px] transition-colors hover:bg-white/10"
+            className="rounded-[10px] px-4 py-2 text-sm font-medium text-[#334155] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F172A]"
           >
             Encontrar Instrutor
           </Link>
@@ -94,7 +100,7 @@ export function Navbar() {
             <>
               <Link
                 href={accountHref}
-                className="text-sm text-white/80 hover:text-white px-4 py-2 rounded-[6px] transition-colors hover:bg-white/10"
+                className="rounded-[10px] px-4 py-2 text-sm font-medium text-[#334155] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F172A]"
               >
                 {role === 'instructor' ? 'Meu Painel' : 'Minha Conta'}
               </Link>
@@ -103,8 +109,7 @@ export function Navbar() {
                 onClick={() => {
                   void handleLogout()
                 }}
-                className="text-sm font-medium px-4 py-2 rounded-[6px] transition-colors"
-                style={{ background: '#3ECF8E', color: '#0F172A' }}
+                className="rounded-full bg-[#3ECF8E] px-5 py-2.5 text-sm font-semibold text-[#0F172A] transition-opacity hover:opacity-90"
               >
                 Sair
               </button>
@@ -113,14 +118,13 @@ export function Navbar() {
             <>
               <Link
                 href="/cadastro/instrutor"
-                className="text-sm text-white/80 hover:text-white px-4 py-2 rounded-[6px] transition-colors hover:bg-white/10"
+                className="rounded-[10px] px-4 py-2 text-sm font-medium text-[#334155] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F172A]"
               >
                 Seja Instrutor
               </Link>
               <Link
                 href="/login/aluno"
-                className="text-sm font-medium px-4 py-2 rounded-[6px] transition-colors"
-                style={{ background: '#3ECF8E', color: '#0F172A' }}
+                className="rounded-full bg-[#3ECF8E] px-5 py-2.5 text-sm font-semibold text-[#0F172A] transition-opacity hover:opacity-90"
               >
                 Entrar
               </Link>
@@ -128,28 +132,25 @@ export function Navbar() {
           )}
         </div>
 
-        {/* Mobile: entrar + hamburger */}
-        <div className="flex md:hidden items-center gap-2">
+        <div className="flex items-center gap-2 md:hidden">
           {isAuthenticated ? (
             <Link
               href={accountHref}
-              className="text-sm font-medium px-3 py-1.5 rounded-[6px]"
-              style={{ background: '#3ECF8E', color: '#0F172A' }}
+              className="rounded-full bg-[#3ECF8E] px-3.5 py-2 text-sm font-semibold text-[#0F172A]"
             >
               {role === 'instructor' ? 'Painel' : 'Conta'}
             </Link>
           ) : (
             <Link
               href="/login/aluno"
-              className="text-sm font-medium px-3 py-1.5 rounded-[6px]"
-              style={{ background: '#3ECF8E', color: '#0F172A' }}
+              className="rounded-full bg-[#3ECF8E] px-3.5 py-2 text-sm font-semibold text-[#0F172A]"
             >
               Entrar
             </Link>
           )}
           <button
             onClick={() => setMenuOpen(v => !v)}
-            className="p-2 text-white"
+            className="flex h-10 w-10 items-center justify-center rounded-[10px] border border-[#E2E8F0] bg-white text-[#0F172A]"
             aria-label="Menu"
           >
             {menuOpen ? <X size={22} /> : <Menu size={22} />}
@@ -157,13 +158,13 @@ export function Navbar() {
         </div>
       </nav>
 
-      {/* Mobile menu */}
       {menuOpen && (
-        <div className="md:hidden border-t px-4 py-4 flex flex-col gap-2" style={{ background: '#1c1c1c', borderColor: '#333333' }}>
+        <div className="border-t border-[#E2E8F0] bg-white px-4 py-4 md:hidden">
+          <div className="flex flex-col gap-2">
           <Link
             href="/buscar"
             onClick={() => setMenuOpen(false)}
-            className="text-sm text-white/80 hover:text-white px-4 py-3 rounded-[6px] hover:bg-white/10"
+            className="rounded-[12px] px-4 py-3 text-sm font-medium text-[#334155] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F172A]"
           >
             Encontrar Instrutor
           </Link>
@@ -172,7 +173,7 @@ export function Navbar() {
               <Link
                 href={accountHref}
                 onClick={() => setMenuOpen(false)}
-                className="text-sm text-white/80 hover:text-white px-4 py-3 rounded-[6px] hover:bg-white/10"
+                className="rounded-[12px] px-4 py-3 text-sm font-medium text-[#334155] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F172A]"
               >
                 {role === 'instructor' ? 'Meu Painel' : 'Minha Conta'}
               </Link>
@@ -181,7 +182,7 @@ export function Navbar() {
                 onClick={() => {
                   void handleLogout()
                 }}
-                className="text-left text-sm text-white/80 hover:text-white px-4 py-3 rounded-[6px] hover:bg-white/10"
+                className="rounded-[12px] px-4 py-3 text-left text-sm font-medium text-[#334155] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F172A]"
               >
                 Sair
               </button>
@@ -191,19 +192,20 @@ export function Navbar() {
               <Link
                 href="/cadastro/instrutor"
                 onClick={() => setMenuOpen(false)}
-                className="text-sm text-white/80 hover:text-white px-4 py-3 rounded-[6px] hover:bg-white/10"
+                className="rounded-[12px] px-4 py-3 text-sm font-medium text-[#334155] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F172A]"
               >
                 Seja Instrutor
               </Link>
               <Link
                 href="/login/instrutor"
                 onClick={() => setMenuOpen(false)}
-                className="text-sm text-white/80 hover:text-white px-4 py-3 rounded-[6px] hover:bg-white/10"
+                className="rounded-[12px] px-4 py-3 text-sm font-medium text-[#334155] transition-colors hover:bg-[#F8FAFC] hover:text-[#0F172A]"
               >
                 Entrar como Instrutor
               </Link>
             </>
           )}
+          </div>
         </div>
       )}
     </header>
