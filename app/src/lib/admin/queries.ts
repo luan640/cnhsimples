@@ -12,6 +12,7 @@ export type InstructorRow = {
   cnh_expires_at: string | null
   hourly_rate: number | null
   rating: number | null
+  hidden_from_search: boolean | null
 }
 
 export type InstructorDetail = InstructorRow & {
@@ -33,6 +34,7 @@ export type InstructorDetail = InstructorRow & {
   platform_split_rate: number | null
   email: string | null
   rejection_reason: string | null
+  hidden_from_search: boolean | null
 }
 
 export type RevenueSplitSettings = {
@@ -66,7 +68,7 @@ export type AdminStats = {
   totalStudents: number
 }
 
-type InstructorProfileSummary = Pick<InstructorRow, 'id' | 'user_id' | 'full_name' | 'status' | 'category' | 'neighborhood' | 'city' | 'created_at' | 'cnh_expires_at' | 'hourly_rate' | 'rating'>
+type InstructorProfileSummary = Pick<InstructorRow, 'id' | 'user_id' | 'full_name' | 'status' | 'category' | 'neighborhood' | 'city' | 'created_at' | 'cnh_expires_at' | 'hourly_rate' | 'rating' | 'hidden_from_search'>
 
 type InstructorProfileName = {
   id: string
@@ -104,7 +106,7 @@ export async function listInstructors(status?: string): Promise<InstructorRow[]>
 
   const baseQuery = admin
     .from('instructor_profiles')
-    .select('id, user_id, full_name, status, category, neighborhood, city, created_at, cnh_expires_at, hourly_rate, rating')
+    .select('id, user_id, full_name, status, category, neighborhood, city, created_at, cnh_expires_at, hourly_rate, rating, hidden_from_search')
     .order('created_at', { ascending: false })
 
   const query = status && status !== 'all' ? baseQuery.eq('status', status) : baseQuery

@@ -93,9 +93,7 @@ export function SearchResultCard({ instructor }: Props) {
             </div>
           </div>
 
-          <p className="text-xs text-[#64748B]">
-            Categoria {category} · {neighborhood}
-          </p>
+          <p className="text-xs text-[#64748B]">{neighborhood}</p>
 
           <div className="mt-1.5 flex flex-wrap items-center justify-between gap-1">
             {distance_km !== undefined ? (

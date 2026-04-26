@@ -1,20 +1,22 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CheckCircle2, XCircle, ShieldCheck } from 'lucide-react'
+import { CheckCircle2, XCircle, ShieldCheck, EyeOff, Eye } from 'lucide-react'
 import {
   approveInstructorDocs,
   rejectInstructorDocs,
   activateInstructor,
+  toggleHiddenFromSearch,
 } from '@/app/admin/instrutores/[id]/actions'
 
 interface Props {
   instructorId: string
   userId: string
   status: string
+  hiddenFromSearch: boolean
 }
 
-export function InstructorActions({ instructorId, userId, status }: Props) {
+export function InstructorActions({ instructorId, userId, status, hiddenFromSearch }: Props) {
   const [isPending, startTransition] = useTransition()
   const [rejectMode, setRejectMode] = useState(false)
   const [reason, setReason] = useState('')
@@ -90,6 +92,20 @@ export function InstructorActions({ instructorId, userId, status }: Props) {
             Rejeitar documentação
           </button>
         )}
+
+        <button
+          onClick={() => run(() => toggleHiddenFromSearch(instructorId, !hiddenFromSearch))}
+          disabled={isPending}
+          className="w-full flex items-center justify-center gap-2 py-2.5 rounded-[8px] text-sm font-semibold disabled:opacity-50"
+          style={
+            hiddenFromSearch
+              ? { background: '#E0F2FE', color: '#0369A1', border: '1px solid #BAE6FD' }
+              : { background: '#FEF3C7', color: '#92400E', border: '1px solid #FDE68A' }
+          }
+        >
+          {hiddenFromSearch ? <Eye size={16} /> : <EyeOff size={16} />}
+          {hiddenFromSearch ? 'Reexibir na busca' : 'Ocultar da busca'}
+        </button>
 
         {rejectMode && (
           <div className="space-y-2">

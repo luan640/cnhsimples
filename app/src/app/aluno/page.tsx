@@ -23,6 +23,12 @@ export default async function Page() {
     .maybeSingle()
 
   const meta = user.user_metadata as Record<string, string | null>
+
+  // Usuário exclusivamente instrutor (sem perfil de aluno) → redireciona ao painel
+  if (!profile && meta.role === 'instructor') {
+    redirect('/painel')
+  }
+
   const name = profile?.full_name ?? meta.full_name ?? meta.name ?? user.email ?? 'Aluno'
   const photoUrl = profile?.photo_url ?? meta.avatar_url ?? meta.photo_url ?? null
 

@@ -111,6 +111,21 @@ export async function activateInstructor(instructorId: string, userId: string) {
   revalidatePath('/admin')
 }
 
+export async function toggleHiddenFromSearch(instructorId: string, hidden: boolean) {
+  const admin = createAdminClient()
+
+  const { error } = await admin
+    .from('instructor_profiles')
+    .update({ hidden_from_search: hidden })
+    .eq('id', instructorId)
+
+  if (error) throw new Error(error.message)
+
+  revalidatePath(`/admin/instrutores/${instructorId}`)
+  revalidatePath('/admin/instrutores')
+  revalidatePath('/buscar')
+}
+
 function parsePercent(rawValue: string) {
   const normalized = rawValue.replace(',', '.').trim()
   const percent = Number(normalized)

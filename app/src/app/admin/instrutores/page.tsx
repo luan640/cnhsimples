@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { listInstructors } from '@/lib/admin/queries'
-import { Users } from 'lucide-react'
+import { Users, Eye, EyeOff } from 'lucide-react'
 
 const TABS = [
   { label: 'Todos', value: 'all' },
@@ -87,6 +87,7 @@ export default async function AdminInstructorsPage({
                 <th className="text-left px-4 py-3 font-semibold hidden md:table-cell" style={{ color: '#64748B' }}>Categoria</th>
                 <th className="text-left px-4 py-3 font-semibold hidden md:table-cell" style={{ color: '#64748B' }}>Cidade</th>
                 <th className="text-left px-4 py-3 font-semibold" style={{ color: '#64748B' }}>Status</th>
+                <th className="text-left px-4 py-3 font-semibold hidden md:table-cell" style={{ color: '#64748B' }}>Busca</th>
                 <th className="text-left px-4 py-3 font-semibold hidden lg:table-cell" style={{ color: '#64748B' }}>Cadastro</th>
                 <th className="px-4 py-3" />
               </tr>
@@ -114,6 +115,25 @@ export default async function AdminInstructorsPage({
                     >
                       {STATUS_LABEL[inst.status] ?? inst.status}
                     </span>
+                  </td>
+                  <td className="px-4 py-3 hidden md:table-cell">
+                    {inst.hidden_from_search ? (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                        style={{ background: '#FEF3C7', color: '#92400E' }}
+                      >
+                        <EyeOff size={11} />
+                        Oculto
+                      </span>
+                    ) : (
+                      <span
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold"
+                        style={{ background: '#F0FDF4', color: '#16A34A' }}
+                      >
+                        <Eye size={11} />
+                        Visível
+                      </span>
+                    )}
                   </td>
                   <td className="px-4 py-3 hidden lg:table-cell text-sm" style={{ color: '#94A3B8' }}>
                     {new Date(inst.created_at).toLocaleDateString('pt-BR')}

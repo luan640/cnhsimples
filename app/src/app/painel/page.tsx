@@ -36,11 +36,14 @@ export default async function PainelPage({ searchParams }: { searchParams: Searc
   const metaStatus: string = meta.status ?? 'pending'
   const metaRole: string = meta.role ?? ''
 
-  if (metaRole && metaRole !== 'instructor') {
-    redirect('/buscar')
-  }
-
   const profile = await getInstructorProfile(user.id)
+
+  // Redireciona apenas se não houver perfil de instrutor E o usuário for
+  // exclusivamente aluno — permite que um aluno que também se cadastrou
+  // como instrutor acesse o painel pelo fluxo de instrutor.
+  if (!profile && metaRole === 'student') {
+    redirect('/aluno')
+  }
   const status = resolveInstructorStatus(profile?.status, metaStatus)
   const instructorName = profile?.full_name ?? (meta.full_name as string | undefined) ?? 'Instrutor'
   const rejectionReason = profile?.rejection_reason ?? (meta.rejection_reason as string | undefined) ?? null

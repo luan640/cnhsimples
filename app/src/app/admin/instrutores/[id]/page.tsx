@@ -227,7 +227,12 @@ export default async function InstructorDetailPage({
         </div>
 
         <div className="space-y-4">
-          <InstructorActions instructorId={profile.id} userId={profile.user_id} status={profile.status} />
+          <InstructorActions
+            instructorId={profile.id}
+            userId={profile.user_id}
+            status={profile.status}
+            hiddenFromSearch={profile.hidden_from_search ?? false}
+          />
 
           <RevenueSplitSettingsCard
             title="Split deste instrutor"

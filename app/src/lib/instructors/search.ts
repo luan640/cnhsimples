@@ -259,7 +259,11 @@ export async function getInstructorSearchItems(userCoords?: UserCoords | null) {
   if (!supabase) return []
 
   for (const table of TABLE_CANDIDATES) {
-    const { data, error } = await supabase.from(table).select('*').limit(100)
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .not('hidden_from_search', 'eq', true)
+      .limit(100)
 
     if (error) {
       if (error.code === 'PGRST205' || error.code === '42P01') continue
