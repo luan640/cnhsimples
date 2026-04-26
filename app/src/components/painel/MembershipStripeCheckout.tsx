@@ -40,6 +40,11 @@ function CheckoutForm({ onSuccess }: { onSuccess: () => void }) {
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/painel?mensalidade=success`,
+        payment_method_data: {
+          billing_details: {
+            address: { country: 'BR' },
+          },
+        },
       },
       redirect: 'if_required',
     })
@@ -86,11 +91,6 @@ function CheckoutForm({ onSuccess }: { onSuccess: () => void }) {
           </>
         )}
       </button>
-
-      <p className="flex items-center justify-center gap-1.5 text-[11px]" style={{ color: '#94A3B8' }}>
-        <CreditCard size={11} />
-        Pagamento seguro via Stripe — sem conta necessária
-      </p>
     </form>
   )
 }
