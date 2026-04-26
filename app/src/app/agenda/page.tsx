@@ -4,13 +4,18 @@ import { getInstructorProfile } from '@/lib/instructors/dashboard'
 import { getAgendaData, getScheduleRules, autoExtendScheduleSlots } from '@/lib/instructors/agenda'
 import { AgendaView } from '@/components/painel/AgendaView'
 
-export default async function AgendaPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>
+
+export default async function AgendaPage({ searchParams }: { searchParams: SearchParams }) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login/instrutor')
 
   const profile = await getInstructorProfile(user.id)
   if (!profile) redirect('/painel')
+
+  const params = await searchParams
+  const fromOnboarding = params.from === 'onboarding'
 
   const today = new Date()
   const startDate = new Date(today.getFullYear(), today.getMonth(), 1)
@@ -28,6 +33,7 @@ export default async function AgendaPage() {
       initialSlots={agendaData.slots}
       initialAbsences={agendaData.absences}
       initialRules={scheduleRules}
+      fromOnboarding={fromOnboarding}
     />
   )
 }

@@ -23,10 +23,17 @@ function ErrorBanner({ message }: { message: string }) {
   )
 }
 
-function CheckoutForm({ onSuccess }: { onSuccess: () => void }) {
+function CheckoutForm({
+  stripeSubscriptionId,
+  onSuccess,
+}: {
+  stripeSubscriptionId: string
+  onSuccess: () => void
+}) {
   const stripe = useStripe()
   const elements = useElements()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isActivating, setIsActivating] = useState(false)
   const [errorMsg, setErrorMsg] = useState('')
 
   async function handleSubmit(e: React.FormEvent) {
@@ -40,11 +47,6 @@ function CheckoutForm({ onSuccess }: { onSuccess: () => void }) {
       elements,
       confirmParams: {
         return_url: `${window.location.origin}/painel?mensalidade=success`,
-        payment_method_data: {
-          billing_details: {
-            address: { country: 'BR' },
-          },
-        },
       },
       redirect: 'if_required',
     })
@@ -55,31 +57,49 @@ function CheckoutForm({ onSuccess }: { onSuccess: () => void }) {
       return
     }
 
-    onSuccess()
+    // Payment confirmed — activate instructor on backend
+    setIsSubmitting(false)
+    setIsActivating(true)
+
+    try {
+      const res = await fetch('/api/payments/instructor-membership/stripe-confirm', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stripeSubscriptionId }),
+      })
+      const data = await res.json()
+
+      if (!res.ok || !data.activated) {
+        setErrorMsg('Pagamento confirmado, mas houve um erro ao ativar o perfil. Aguarde alguns instantes e recarregue a página.')
+        setIsActivating(false)
+        return
+      }
+
+      onSuccess()
+    } catch {
+      setErrorMsg('Pagamento confirmado, mas houve um erro ao ativar o perfil. Aguarde alguns instantes e recarregue a página.')
+      setIsActivating(false)
+    }
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {errorMsg && <ErrorBanner message={errorMsg} />}
 
-      <PaymentElement
-        options={{
-          layout: 'tabs',
-          fields: {
-            billingDetails: {
-              address: 'never',
-            },
-          },
-        }}
-      />
+      <PaymentElement options={{ layout: 'tabs' }} />
 
       <button
         type="submit"
-        disabled={isSubmitting || !stripe}
+        disabled={isSubmitting || isActivating || !stripe}
         className="flex min-h-[48px] w-full items-center justify-center gap-2 rounded-[9999px] text-sm font-semibold transition-opacity disabled:opacity-60"
         style={{ background: '#3ECF8E', color: '#0F172A' }}
       >
-        {isSubmitting ? (
+        {isActivating ? (
+          <>
+            <Loader2 size={16} className="animate-spin" />
+            Ativando perfil…
+          </>
+        ) : isSubmitting ? (
           <>
             <Loader2 size={16} className="animate-spin" />
             Processando…
@@ -102,6 +122,7 @@ type Props = {
 
 export function MembershipStripeCheckout({ amount, onSuccess }: Props) {
   const [clientSecret, setClientSecret] = useState<string | null>(null)
+  const [stripeSubscriptionId, setStripeSubscriptionId] = useState<string | null>(null)
   const [loadError, setLoadError] = useState('')
 
   const setup = useCallback(async () => {
@@ -117,6 +138,7 @@ export function MembershipStripeCheckout({ amount, onSuccess }: Props) {
       }
 
       setClientSecret(data.clientSecret)
+      setStripeSubscriptionId(data.stripeSubscriptionId ?? null)
     } catch {
       setLoadError('Erro ao conectar com o servidor de pagamento.')
     }
@@ -128,7 +150,7 @@ export function MembershipStripeCheckout({ amount, onSuccess }: Props) {
 
   if (loadError) return <ErrorBanner message={loadError} />
 
-  if (!clientSecret) {
+  if (!clientSecret || !stripeSubscriptionId) {
     return (
       <div className="flex items-center justify-center gap-2 py-6">
         <Loader2 size={16} className="animate-spin text-[#3ECF8E]" />
@@ -166,7 +188,7 @@ export function MembershipStripeCheckout({ amount, onSuccess }: Props) {
           R$ {amount.toFixed(2).replace('.', ',')} / mês — renovação automática
         </p>
       </div>
-      <CheckoutForm onSuccess={onSuccess} />
+      <CheckoutForm stripeSubscriptionId={stripeSubscriptionId} onSuccess={onSuccess} />
     </Elements>
   )
 }

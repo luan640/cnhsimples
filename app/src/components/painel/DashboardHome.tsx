@@ -130,7 +130,7 @@ export function DashboardHome({ profile, stats }: Props) {
   const proximaAula = stats.proximasAulas[0]
 
   return (
-    <div className="p-4 md:p-6 lg:p-8 max-w-6xl">
+    <div className="p-4 md:p-6 lg:p-8 w-full max-w-6xl mx-auto">
       <div className="mb-7">
         <h1 className="text-xl font-bold" style={{ color: '#0F172A' }}>
           {saudacao}, {firstName}

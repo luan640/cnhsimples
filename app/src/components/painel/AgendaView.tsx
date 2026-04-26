@@ -85,6 +85,7 @@ interface Props {
   initialSlots: AgendaSlot[]
   initialAbsences: AbsenceBlock[]
   initialRules: ScheduleRule[]
+  fromOnboarding?: boolean
 }
 
 // ─── Modal: Criar Slot ───────────────────────────────────────────────────────
@@ -1198,7 +1199,7 @@ function MonthGrid({
 }
 
 // ─── Main Component ──────────────────────────────────────────────────────────
-export function AgendaView({ profileId, initialSlots, initialAbsences, initialRules }: Props) {
+export function AgendaView({ profileId, initialSlots, initialAbsences, initialRules, fromOnboarding = false }: Props) {
   const router = useRouter()
 
   const [view, setView] = useState<View>('hoje')
@@ -1301,9 +1302,13 @@ export function AgendaView({ profileId, initialSlots, initialAbsences, initialRu
           break_end_minute: r.break_end_minute,
         }))
       )
-      router.refresh()
+      if (fromOnboarding) {
+        router.push('/painel/onboarding')
+      } else {
+        router.refresh()
+      }
     },
-    [router]
+    [router, fromOnboarding]
   )
 
   return (

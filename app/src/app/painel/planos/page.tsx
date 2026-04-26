@@ -138,7 +138,7 @@ export default async function PlanosPage() {
               </p>
               <p>
                 {hasRecurringSubscription
-                  ? 'Use o cancelamento abaixo para interromper a recorrencia da assinatura no Mercado Pago.'
+                  ? 'Use o cancelamento abaixo para interromper a recorrencia da assinatura.'
                   : 'Este plano deveria estar vinculado a uma assinatura recorrente. Se o cancelamento nao aparecer, atualize os dados da assinatura no Mercado Pago.'}
               </p>
             </div>

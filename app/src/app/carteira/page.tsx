@@ -47,7 +47,12 @@ const PIX_LABEL: Record<string, string> = {
   random: 'Chave aleatória',
 }
 
-export default async function CarteiraPage() {
+type SearchParams = Promise<Record<string, string | string[] | undefined>>
+
+export default async function CarteiraPage({ searchParams }: { searchParams: SearchParams }) {
+  const params = await searchParams
+  const fromOnboarding = params.from === 'onboarding'
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login/instrutor')
@@ -160,7 +165,7 @@ export default async function CarteiraPage() {
         <span className="font-semibold">Atenção:</span> a solicitação de saque irá demorar até 2 dias úteis para ser creditada em sua conta.
       </div>
 
-      {!hasPixKey ? <CadastrarPixCard /> : null}
+      {!hasPixKey ? <CadastrarPixCard fromOnboarding={fromOnboarding} /> : null}
 
       {/* Saques */}
       <section className="space-y-3">

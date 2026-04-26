@@ -36,6 +36,7 @@ const CATEGORY_COLOR: Record<string, { bg: string; text: string }> = {
 type Props = {
   initialServices: InstructorService[]
   platformSplitRate: number
+  fromOnboarding?: boolean
 }
 
 function formatBRL(value: number) {
@@ -179,13 +180,13 @@ function serviceToForm(service: InstructorService): FormState {
 function ServiceModal({
   service,
   platformSplitRate,
-  usedCategories,
+  individualCategories,
   onClose,
   onSave,
 }: {
   service: InstructorService | null
   platformSplitRate: number
-  usedCategories: Set<string>
+  individualCategories: Set<string>
   onClose: () => void
   onSave: (payload: ServicePayload, id?: string) => Promise<void>
 }) {
@@ -195,6 +196,16 @@ function ServiceModal({
 
   function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((previous) => ({ ...previous, [key]: value }))
+    setError(null)
+  }
+
+  function handleTypeChange(type: 'individual' | 'package') {
+    setForm((previous) => ({
+      ...previous,
+      service_type: type,
+      // clear category if switching to individual and current category is already used
+      category: type === 'individual' && individualCategories.has(previous.category) ? '' : previous.category,
+    }))
     setError(null)
   }
 
@@ -215,6 +226,11 @@ function ServiceModal({
 
     if (form.service_type === 'package' && lessonCount < 2) {
       setError('Pacote deve ter pelo menos 2 aulas.')
+      return
+    }
+
+    if (form.service_type === 'individual' && !service && form.category && individualCategories.has(form.category)) {
+      setError(`Já existe uma aula avulsa para categoria ${form.category}. Para mais serviços nessa categoria, crie um pacote.`)
       return
     }
 
@@ -265,45 +281,60 @@ function ServiceModal({
           <p className="text-sm font-semibold text-[#0F172A]">{previewTitle}</p>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <Field label="Categoria CNH">
-            {service ? (
-              <div className="flex h-[38px] items-center rounded-[8px] border border-[#E2E8F0] px-3 text-sm text-[#0F172A]">
-                {form.category ? CATEGORY_LABEL[form.category] ?? form.category : 'Sem categoria'}
-              </div>
-            ) : (
-              <select
-                value={form.category}
-                onChange={(event) => set('category', event.target.value as FormState['category'])}
-                className={inputClass}
+        <Field label="Tipo de serviço">
+          <div className="flex h-[38px] gap-2">
+            {(['individual', 'package'] as const).map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => !service && handleTypeChange(type)}
+                disabled={Boolean(service)}
+                className="flex-1 rounded-[8px] border text-xs font-medium transition-colors disabled:cursor-default"
+                style={{
+                  background: form.service_type === type ? '#0F172A' : '#FFFFFF',
+                  color: form.service_type === type ? '#FFFFFF' : '#64748B',
+                  borderColor: form.service_type === type ? '#0F172A' : '#E2E8F0',
+                }}
               >
-                <option value="" disabled>Selecione</option>
-                {!usedCategories.has('A') && <option value="A">A - Moto</option>}
-                {!usedCategories.has('B') && <option value="B">B - Carro</option>}
-              </select>
-            )}
-          </Field>
+                {type === 'individual' ? 'Aula avulsa' : 'Pacote de aulas'}
+              </button>
+            ))}
+          </div>
+          {form.service_type === 'package' && (
+            <p className="mt-1 text-[11px] text-[#94A3B8]">
+              Voce pode criar varios pacotes por categoria
+            </p>
+          )}
+        </Field>
 
-          <Field label="Tipo">
-            <div className="flex h-[38px] gap-2">
-              {(['individual', 'package'] as const).map((type) => (
-                <button
-                  key={type}
-                  type="button"
-                  onClick={() => set('service_type', type)}
-                  className="flex-1 rounded-[8px] border text-xs font-medium transition-colors"
-                  style={{
-                    background: form.service_type === type ? '#0F172A' : '#FFFFFF',
-                    color: form.service_type === type ? '#FFFFFF' : '#64748B',
-                    borderColor: form.service_type === type ? '#0F172A' : '#E2E8F0',
-                  }}
-                >
-                  {type === 'individual' ? 'Avulsa' : 'Pacote'}
-                </button>
-              ))}
+        <Field label="Categoria CNH">
+          {service ? (
+            <div className="flex h-[38px] items-center rounded-[8px] border border-[#E2E8F0] px-3 text-sm text-[#0F172A]">
+              {form.category ? CATEGORY_LABEL[form.category] ?? form.category : 'Sem categoria'}
             </div>
-          </Field>
-        </div>
+          ) : (
+            <select
+              value={form.category}
+              onChange={(event) => set('category', event.target.value as FormState['category'])}
+              className={inputClass}
+            >
+              <option value="" disabled>Selecione</option>
+              {(form.service_type === 'individual' ? !individualCategories.has('A') : true) && (
+                <option value="A">A - Moto</option>
+              )}
+              {(form.service_type === 'individual' ? !individualCategories.has('B') : true) && (
+                <option value="B">B - Carro</option>
+              )}
+            </select>
+          )}
+          {form.service_type === 'individual' && !service && individualCategories.size > 0 && (
+            <p className="mt-1 text-[11px] text-[#94A3B8]">
+              {individualCategories.size === 2
+                ? 'Já existe aula avulsa para ambas as categorias. Use pacote para adicionar mais serviços.'
+                : `Categoria ${[...individualCategories].join(', ')} já tem aula avulsa cadastrada`}
+            </p>
+          )}
+        </Field>
 
         {form.service_type === 'package' ? (
           <Field label="Numero de aulas no pacote">
@@ -727,6 +758,7 @@ function EmptyState({ onCreate }: { onCreate: () => void }) {
 export function ServicosView({
   initialServices,
   platformSplitRate,
+  fromOnboarding = false,
 }: Props) {
   const router = useRouter()
   const services = initialServices
@@ -743,9 +775,13 @@ export function ServicosView({
     async (payload: ServicePayload, id?: string) => {
       await upsertServiceAction({ ...payload, id })
       setModal(null)
-      router.refresh()
+      if (fromOnboarding && !id) {
+        router.push('/painel/onboarding')
+      } else {
+        router.refresh()
+      }
     },
-    [router]
+    [router, fromOnboarding]
   )
 
   const handleDelete = useCallback(
@@ -766,10 +802,13 @@ export function ServicosView({
   )
 
   const activeCount = services.filter((service) => service.is_active).length
-  const usedCategories = new Set<string>(
-    services.map((service) => service.category).filter((c) => c != null) as string[]
+  // categories that already have an individual (avulso) service — used to gate new avulso creation
+  const individualCategories = new Set<string>(
+    services
+      .filter((s) => s.service_type === 'individual')
+      .map((s) => s.category)
+      .filter((c) => c != null) as string[]
   )
-  const canCreateNew = !usedCategories.has('A') || !usedCategories.has('B')
 
   return (
     <div className="flex min-h-screen flex-col bg-[#F8FAFC]">
@@ -788,10 +827,8 @@ export function ServicosView({
 
           <button
             onClick={() => setModal({ type: 'create' })}
-            disabled={!canCreateNew}
-            className="flex shrink-0 items-center gap-2 rounded-[9999px] px-4 py-2 text-sm font-semibold text-[#0F172A] transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
+            className="flex shrink-0 items-center gap-2 rounded-[9999px] px-4 py-2 text-sm font-semibold text-[#0F172A] transition-opacity"
             style={{ background: '#3ECF8E' }}
-            title={!canCreateNew ? 'Serviços para categoria A e B já cadastrados' : undefined}
           >
             <Plus size={16} />
             <span className="hidden sm:inline">Novo servico</span>
@@ -830,7 +867,7 @@ export function ServicosView({
         <ServiceModal
           service={modal.type === 'edit' ? modal.service : null}
           platformSplitRate={platformSplitRate}
-          usedCategories={usedCategories}
+          individualCategories={individualCategories}
           onClose={() => setModal(null)}
           onSave={handleUpsert}
         />

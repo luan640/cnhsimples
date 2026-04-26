@@ -14,6 +14,7 @@ import {
   syncLatestInstructorPlanSubscriptionByEmail,
 } from '@/lib/instructors/subscriptions'
 import { isInstructorSubscriptionActiveForAccess } from '@/lib/instructors/subscription-shared'
+import { getOnboardingSteps } from '@/lib/instructors/onboarding'
 import { createClient } from '@/lib/supabase/server'
 
 type SearchParams = Promise<Record<string, string | string[] | undefined>>
@@ -110,6 +111,12 @@ export default async function PainelPage({ searchParams }: { searchParams: Searc
       />
     )
   }
+
+  // Redirect to onboarding wizard if instructor hasn't completed setup
+  const onboardingSteps = await getOnboardingSteps(profile.id)
+  const onboardingDone = onboardingSteps.find(s => s.id === 'done')?.completed ?? false
+  const onboardingPending = !onboardingDone && onboardingSteps.some(s => s.id !== 'done' && !s.completed)
+  if (onboardingPending) redirect('/painel/onboarding')
 
   const stats = await getDashboardStats(profile.id)
 

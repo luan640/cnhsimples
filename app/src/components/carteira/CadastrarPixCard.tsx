@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
+import { useRouter } from 'next/navigation'
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
 
 import { salvarChavePix } from '@/app/carteira/actions'
@@ -12,7 +13,8 @@ const PIX_KEY_TYPES = [
   { value: 'random', label: 'Chave aleatoria' },
 ]
 
-export function CadastrarPixCard() {
+export function CadastrarPixCard({ fromOnboarding = false }: { fromOnboarding?: boolean }) {
+  const router = useRouter()
   const [pixKey, setPixKey] = useState('')
   const [pixKeyType, setPixKeyType] = useState('cpf')
   const [error, setError] = useState<string | null>(null)
@@ -37,6 +39,11 @@ export function CadastrarPixCard() {
       const result = await salvarChavePix(formData)
       if (!result.ok) {
         setError(result.error)
+        return
+      }
+
+      if (fromOnboarding) {
+        router.push('/painel/onboarding')
         return
       }
 
