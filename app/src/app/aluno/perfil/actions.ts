@@ -22,6 +22,7 @@ export async function updateStudentProfileAction(payload: StudentProfilePayload)
   // Save to auth metadata (always works)
   const { error: metaError } = await supabase.auth.updateUser({
     data: {
+      role: 'student',
       birth_date: payload.birthDate || null,
       gender: payload.gender || null,
       cep: payload.cep || null,

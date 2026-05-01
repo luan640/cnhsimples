@@ -19,6 +19,13 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
+      const roleParam = searchParams.get('role')
+      if (roleParam === 'student' || roleParam === 'instructor') {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user && !user.user_metadata?.role) {
+          await supabase.auth.updateUser({ data: { role: roleParam } })
+        }
+      }
       return NextResponse.redirect(`${origin}${next}`)
     }
   }

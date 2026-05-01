@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { FormEvent, useState } from 'react'
-import { Building2, Eye, EyeOff, GraduationCap, Mail, ShieldCheck } from 'lucide-react'
+import { Eye, EyeOff, GraduationCap, Mail, ShieldCheck } from 'lucide-react'
 
 import { createClient } from '@/lib/supabase/client'
 
@@ -45,7 +45,7 @@ export function AuthLoginForm({ role, nextPath }: AuthLoginFormProps) {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(resolvedNextPath)}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(resolvedNextPath)}&role=${role}`,
       },
     })
 
@@ -126,14 +126,6 @@ export function AuthLoginForm({ role, nextPath }: AuthLoginFormProps) {
             >
               <Mail size={16} />
               {isGoogleLoading ? 'Conectando...' : 'Continuar com Google'}
-            </button>
-            <button
-              type="button"
-              disabled
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-[8px] border border-[#E2E8F0] px-4 text-sm font-medium text-[#94A3B8] opacity-70"
-            >
-              <Building2 size={16} />
-              Login corporativo indisponivel
             </button>
           </div>
 
