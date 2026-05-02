@@ -16,23 +16,57 @@ export default async function Page() {
   }
 
   const admin = createAdminClient()
-  const { data: profile } = await admin
-    .from('student_profiles')
-    .select('id, full_name, photo_url')
-    .eq('user_id', user.id)
-    .maybeSingle()
+
+  const [{ data: profile }, { data: instructorProfile }] = await Promise.all([
+    admin
+      .from('student_profiles')
+      .select('id, full_name, photo_url')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    admin
+      .from('instructor_profiles')
+      .select('id')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+  ])
 
   const meta = user.user_metadata as Record<string, string | null>
 
-  // Usuário exclusivamente instrutor (sem perfil de aluno) → redireciona ao painel
-  if (!profile && meta.role === 'instructor') {
+  // Só redireciona ao painel se o usuário tem um perfil de instrutor real
+  if (!profile && instructorProfile) {
     redirect('/painel')
   }
 
-  const name = profile?.full_name ?? meta.full_name ?? meta.name ?? user.email ?? 'Aluno'
-  const photoUrl = profile?.photo_url ?? meta.avatar_url ?? meta.photo_url ?? null
+  // Cria perfil de aluno caso não exista (ex: falha silenciosa no callback OAuth)
+  let resolvedProfile = profile
+  if (!profile) {
+    const fullName =
+      meta.full_name ?? meta.name ?? user.email?.split('@')[0] ?? 'Aluno'
+    const { data: created } = await admin
+      .from('student_profiles')
+      .insert({
+        user_id: user.id,
+        full_name: fullName,
+        cpf: `oauth-${user.id}`,
+        birth_date: '2000-01-01',
+        phone: '',
+        photo_url: meta.avatar_url ?? meta.photo_url ?? null,
+        cep: '',
+        city: '',
+        neighborhood: '',
+        has_cnh: false,
+        category_interest: 'B',
+        lesson_goals: [],
+      })
+      .select('id, full_name, photo_url')
+      .single()
+    resolvedProfile = created
+  }
 
-  const bookings = profile ? await getStudentBookings(profile.id) : []
+  const name = resolvedProfile?.full_name ?? meta.full_name ?? meta.name ?? user.email ?? 'Aluno'
+  const photoUrl = resolvedProfile?.photo_url ?? meta.avatar_url ?? meta.photo_url ?? null
+
+  const bookings = resolvedProfile ? await getStudentBookings(resolvedProfile.id) : []
 
   return <StudentHome name={name} photoUrl={photoUrl} bookings={bookings} />
 }
