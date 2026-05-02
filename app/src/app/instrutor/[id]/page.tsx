@@ -23,7 +23,7 @@ export default async function InstructorDetailPage({ params }: PageProps) {
     getPublicInstructorDetail(id),
     supabase
       .from('student_profiles')
-      .select('latitude, longitude, cep')
+      .select('latitude, longitude, cep, phone')
       .eq('user_id', user.id)
       .maybeSingle(),
   ])
@@ -35,6 +35,7 @@ export default async function InstructorDetailPage({ params }: PageProps) {
   const studentLat = profileResult.data?.latitude ?? null
   const studentLon = profileResult.data?.longitude ?? null
   const studentCep = profileResult.data?.cep ?? null
+  const studentPhone = profileResult.data?.phone ?? null
 
   return (
     <InstructorBookingView
@@ -42,6 +43,7 @@ export default async function InstructorDetailPage({ params }: PageProps) {
       studentLat={studentLat}
       studentLon={studentLon}
       studentCep={studentCep}
+      studentPhone={studentPhone}
     />
   )
 }

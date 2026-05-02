@@ -14,15 +14,18 @@ import {
   Clock3,
   CreditCard,
   Layers,
+  Loader2,
   MapPin,
   MoonStar,
   Navigation,
   ParkingCircle,
+  Phone,
   QrCode,
   Route,
   ShieldCheck,
   Star,
   Users,
+  X,
 } from 'lucide-react'
 
 import type {
@@ -32,12 +35,14 @@ import type {
   PickupRange,
 } from '@/lib/instructors/detail'
 import { BookingPaymentCheckout } from '@/components/booking/BookingPaymentCheckout'
+import { saveStudentPhone } from '@/app/instrutor/[id]/actions'
 
 type Props = {
   instructor: PublicInstructorDetail
   studentLat: number | null
   studentLon: number | null
   studentCep: string | null
+  studentPhone: string | null
 }
 
 type LessonMode = 'meeting' | 'pickup'
@@ -950,7 +955,7 @@ function StepIndicator({ current }: { current: Step }) {
 
 // ── main component ────────────────────────────────────────────────────────────
 
-export function InstructorBookingView({ instructor, studentLat, studentLon, studentCep }: Props) {
+export function InstructorBookingView({ instructor, studentLat, studentLon, studentCep, studentPhone }: Props) {
   const [step, setStep] = useState<Step>(1)
   const [selectedServiceId, setSelectedServiceId] = useState(instructor.services[0]?.id ?? '')
   const [lessonMode, setLessonMode] = useState<LessonMode>('meeting')
@@ -969,6 +974,12 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   const [successBookingGroupId, setSuccessBookingGroupId] = useState<string | null>(null)
   const [successWhatsAppUrl, setSuccessWhatsAppUrl] = useState<string | null>(null)
   const [checkoutError, setCheckoutError] = useState<string | null>(null)
+
+  // Phone modal
+  const [showPhoneModal, setShowPhoneModal] = useState(false)
+  const [phoneInput, setPhoneInput] = useState('')
+  const [phoneError, setPhoneError] = useState<string | null>(null)
+  const [isSavingPhone, setIsSavingPhone] = useState(false)
 
   const selectedService = instructor.services.find((s) => s.id === selectedServiceId) ?? null
   const isPkg = selectedService?.service_type === 'package'
@@ -1200,6 +1211,18 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   async function handleStartCheckout() {
     setCheckoutError(null)
 
+    const hasPhone = (studentPhone ?? '').replace(/\D/g, '').length >= 10
+    if (!hasPhone) {
+      setPhoneInput('')
+      setPhoneError(null)
+      setShowPhoneModal(true)
+      return
+    }
+
+    await proceedToCheckout()
+  }
+
+  async function proceedToCheckout() {
     const nextSlots = await refreshAvailableSlots()
     if (!nextSlots) return
 
@@ -1211,6 +1234,30 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
     }
 
     setCheckoutPhase('active')
+  }
+
+  async function handleSavePhone() {
+    setPhoneError(null)
+    const digits = phoneInput.replace(/\D/g, '')
+    if (digits.length < 10) {
+      setPhoneError('Informe um número válido com DDD (ex: 85 91234-5678).')
+      return
+    }
+
+    setIsSavingPhone(true)
+    try {
+      const result = await saveStudentPhone(phoneInput.trim())
+      if (!result.ok) {
+        setPhoneError(result.error)
+        return
+      }
+      setShowPhoneModal(false)
+      await proceedToCheckout()
+    } catch {
+      setPhoneError('Erro ao salvar. Tente novamente.')
+    } finally {
+      setIsSavingPhone(false)
+    }
   }
 
   function handleCheckoutSuccess(bookingGroupId: string) {
@@ -1241,6 +1288,85 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
 
   return (
     <div className="min-h-screen" style={{ background: '#F8FAFC' }}>
+      {/* Phone modal */}
+      {showPhoneModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+          style={{ background: 'rgba(0,0,0,0.5)' }}
+          onClick={() => setShowPhoneModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-t-[20px] bg-white p-5 sm:rounded-[16px]"
+            style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.15)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-[8px]"
+                  style={{ background: 'rgba(62,207,142,0.12)' }}
+                >
+                  <Phone size={15} style={{ color: '#3ECF8E' }} />
+                </div>
+                <h2 className="text-base font-bold" style={{ color: '#0F172A' }}>
+                  Informe seu telefone
+                </h2>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowPhoneModal(false)}
+                className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[#F1F5F9]"
+              >
+                <X size={16} style={{ color: '#64748B' }} />
+              </button>
+            </div>
+
+            <p className="mb-4 text-sm" style={{ color: '#64748B' }}>
+              O instrutor precisa do seu WhatsApp para combinar os detalhes da aula.
+            </p>
+
+            <input
+              type="tel"
+              value={phoneInput}
+              onChange={(e) => { setPhoneInput(e.target.value); setPhoneError(null) }}
+              placeholder="(85) 91234-5678"
+              autoFocus
+              className="mb-3 min-h-11 w-full rounded-[8px] border border-[#E2E8F0] px-3 text-base text-[#0F172A] outline-none transition-colors placeholder:text-[#94A3B8] focus:border-[#3ECF8E]"
+            />
+
+            {phoneError && (
+              <div
+                className="mb-3 rounded-[8px] px-3 py-2 text-xs font-medium"
+                style={{ background: '#FEE2E2', color: '#991B1B' }}
+              >
+                {phoneError}
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPhoneModal(false)}
+                disabled={isSavingPhone}
+                className="flex-1 rounded-full py-2.5 text-sm font-semibold disabled:opacity-50"
+                style={{ background: '#F1F5F9', color: '#64748B' }}
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={handleSavePhone}
+                disabled={isSavingPhone}
+                className="flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold disabled:opacity-50"
+                style={{ background: '#3ECF8E', color: '#0F172A' }}
+              >
+                {isSavingPhone ? <Loader2 size={14} className="animate-spin" /> : 'Continuar'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Top bar */}
       <div
         className="sticky top-0 z-30 border-b border-[#E2E8F0] bg-white px-4 py-3"

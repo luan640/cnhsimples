@@ -9,6 +9,7 @@ import {
   ExternalLink,
   FileCheck2,
   Loader2,
+  MessageCircle,
   Paperclip,
   X,
   XCircle,
@@ -31,6 +32,13 @@ function formatTime(hour: number, minute: number) {
 
 function formatCurrency(value: number) {
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
+}
+
+function getWhatsAppHref(phone: string | null) {
+  const digits = (phone ?? '').replace(/\D/g, '')
+  if (digits.length < 10) return null
+  const normalized = digits.startsWith('55') ? digits : `55${digits}`
+  return `https://wa.me/${normalized}`
 }
 
 function getInitials(name: string) {
@@ -245,6 +253,7 @@ function LessonChip({
 }) {
   const cfg = STATUS_CONFIG[lesson.status] ?? STATUS_CONFIG.pending
   const StatusIcon = cfg.icon
+  const whatsappHref = getWhatsAppHref(lesson.student_phone)
 
   return (
     <div
@@ -271,14 +280,28 @@ function LessonChip({
           </p>
         </div>
 
-        {/* Status */}
-        <span
-          className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-          style={{ background: cfg.bg, color: cfg.color }}
-        >
-          <StatusIcon size={10} />
-          {cfg.label}
-        </span>
+        {/* WhatsApp + Status */}
+        <div className="flex shrink-0 items-center gap-1.5">
+          {whatsappHref && (
+            <a
+              href={whatsappHref}
+              target="_blank"
+              rel="noopener noreferrer"
+              aria-label={`WhatsApp de ${lesson.student_name}`}
+              className="flex h-7 w-7 items-center justify-center rounded-full transition-transform hover:scale-105"
+              style={{ background: '#DCFCE7', color: '#16A34A' }}
+            >
+              <MessageCircle size={14} />
+            </a>
+          )}
+          <span
+            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+            style={{ background: cfg.bg, color: cfg.color }}
+          >
+            <StatusIcon size={10} />
+            {cfg.label}
+          </span>
+        </div>
       </div>
 
       {/* Footer row */}
