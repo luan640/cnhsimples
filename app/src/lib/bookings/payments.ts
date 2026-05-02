@@ -850,6 +850,50 @@ export async function getBookingGroupStatus(
   return { status: bookingGroup.status }
 }
 
+// Completa uma aula individualmente: atualiza status do booking + slot e credita carteiras.
+// Idempotente: creditWallet usa booking.id como reference_id.
+export async function completeSingleLesson(params: {
+  bookingId: string
+  slotId: string
+  instructorId: string
+  instructorAmount: number
+  platformAmount: number
+}): Promise<void> {
+  const admin = createAdminClient()
+  const { bookingId, slotId, instructorId, instructorAmount, platformAmount } = params
+
+  await Promise.all([
+    admin
+      .from('bookings')
+      .update({ status: 'completed' })
+      .eq('id', bookingId)
+      .neq('status', 'completed'),
+    admin
+      .from('availability_slots')
+      .update({ status: 'completed' })
+      .eq('id', slotId)
+      .eq('status', 'booked'),
+  ])
+
+  const normalized = round2(Number(instructorAmount))
+  const normalizedPlatform = round2(Number(platformAmount))
+
+  if (normalized > 0) {
+    await creditWallet(admin, instructorId, 'instructor', normalized, 'Aula concluída', bookingId)
+  }
+
+  if (normalizedPlatform > 0) {
+    await creditWallet(
+      admin,
+      PLATFORM_WALLET_OWNER_ID,
+      'platform',
+      normalizedPlatform,
+      'Comissão — aula concluída',
+      bookingId
+    )
+  }
+}
+
 // Credita as carteiras de aulas que já ocorreram (slot.start + 1h <= agora).
 // Chamado de forma lazy ao carregar dashboard/carteira do instrutor.
 // Idempotente: usa booking.id como reference_id para evitar duplo crédito.

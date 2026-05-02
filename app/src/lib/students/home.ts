@@ -18,6 +18,8 @@ export type StudentBooking = {
   service_type: 'individual' | 'package'
   package_lesson_index: number | null
   package_total_lessons: number | null
+  receipt_url: string | null
+  confirmed_at: string | null
 }
 
 export async function getStudentBookings(studentId: string): Promise<StudentBooking[]> {
@@ -33,6 +35,8 @@ export async function getStudentBookings(studentId: string): Promise<StudentBook
       status,
       value,
       lesson_mode,
+      receipt_url,
+      confirmed_at,
       created_at,
       availability_slots ( date, hour, minute ),
       instructor_profiles ( full_name, photo_url, phone ),
@@ -83,6 +87,8 @@ export async function getStudentBookings(studentId: string): Promise<StudentBook
       service_type: serviceType,
       package_lesson_index: null,
       package_total_lessons: serviceType === 'package' ? totalLessons : null,
+      receipt_url: (row as any).receipt_url ?? null,
+      confirmed_at: (row as any).confirmed_at ?? null,
     }
   })
 

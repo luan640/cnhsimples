@@ -2,7 +2,6 @@ import { unstable_noStore as noStore } from 'next/cache'
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import { settleCompletedLessons } from '@/lib/bookings/payments'
 
 export type InstructorProfile = {
   id: string
@@ -95,7 +94,6 @@ export async function getInstructorProfile(userId: string): Promise<InstructorPr
 }
 
 export async function getDashboardStats(profileId: string): Promise<DashboardStats> {
-  await settleCompletedLessons(profileId).catch(() => {})
   const supabase = await createClient()
 
   const today = new Date()

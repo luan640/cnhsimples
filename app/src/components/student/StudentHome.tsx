@@ -11,6 +11,8 @@ import {
   ChevronRight,
   Clock,
   CreditCard,
+  ExternalLink,
+  FileCheck2,
   History,
   Loader2,
   MapPin,
@@ -181,6 +183,22 @@ function BookingDetailModal({
               {formatCurrency(booking.value)}
             </span>
           </div>
+
+          {booking.receipt_url && (
+            <a
+              href={booking.receipt_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex w-full items-center justify-between rounded-[10px] px-3 py-2.5 transition-colors hover:opacity-90"
+              style={{ background: '#DBEAFE' }}
+            >
+              <span className="flex items-center gap-1.5 text-xs font-semibold" style={{ color: '#1E40AF' }}>
+                <FileCheck2 size={13} />
+                Ver comprovante
+              </span>
+              <ExternalLink size={12} style={{ color: '#1E40AF' }} />
+            </a>
+          )}
         </div>
       </div>
     </div>
@@ -244,13 +262,23 @@ function BookingChip({
               <MessageCircle size={15} />
             </a>
           )}
-          <span
-            className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
-            style={{ background: cfg.bg, color: cfg.color }}
-          >
-            <Icon size={10} />
-            {cfg.label}
-          </span>
+          {booking.receipt_url ? (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              style={{ background: '#DBEAFE', color: '#1E40AF' }}
+            >
+              <FileCheck2 size={10} />
+              check comprovante
+            </span>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              style={{ background: cfg.bg, color: cfg.color }}
+            >
+              <Icon size={10} />
+              {cfg.label}
+            </span>
+          )}
         </div>
         <span className="text-xs font-medium text-[#64748B]">{formatCurrency(booking.value)}</span>
       </div>

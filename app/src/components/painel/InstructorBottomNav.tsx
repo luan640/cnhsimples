@@ -2,12 +2,12 @@
 
 import { useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, CalendarDays, BookOpen, Wallet, User, Loader2 } from 'lucide-react'
+import { LayoutDashboard, CalendarDays, GraduationCap, Wallet, User, Loader2 } from 'lucide-react'
 
 const NAV_ITEMS = [
   { href: '/painel', icon: LayoutDashboard, label: 'Painel' },
   { href: '/agenda', icon: CalendarDays, label: 'Agenda' },
-  { href: '/servicos', icon: BookOpen, label: 'Serviços' },
+  { href: '/painel/aulas', icon: GraduationCap, label: 'Aulas' },
   { href: '/carteira', icon: Wallet, label: 'Carteira' },
   { href: '/perfil/instrutor', icon: User, label: 'Perfil' },
 ]

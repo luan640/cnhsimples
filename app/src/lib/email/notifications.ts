@@ -137,6 +137,55 @@ export async function sendInstructorActivatedEmail(params: {
   })
 }
 
+export async function sendStudentLessonConfirmedEmail(params: {
+  to: string
+  studentName: string
+  instructorName: string
+  lessonDate: string
+  lessonTime: string
+  receiptUrl: string
+  lessonsUrl: string
+}) {
+  const { studentName, instructorName, lessonDate, lessonTime, receiptUrl, lessonsUrl } = params
+
+  return sendEmail({
+    to: params.to,
+    subject: 'Sua aula foi registrada — comprovante disponível',
+    text:
+      `Ola, ${studentName}. O instrutor ${instructorName} registrou a realizacao da sua aula ` +
+      `de ${lessonDate} as ${lessonTime}. ` +
+      `O comprovante esta disponivel em: ${receiptUrl}. ` +
+      `Acesse suas aulas: ${lessonsUrl}`,
+    html: `
+      <div style="font-family: Arial, sans-serif; color: #0F172A; line-height: 1.6;">
+        <h1 style="margin-bottom: 12px;">Aula registrada com sucesso</h1>
+        <p>Ola, ${studentName}.</p>
+        <p>
+          O instrutor <strong>${instructorName}</strong> registrou a realizacao da sua aula
+          do dia <strong>${lessonDate}</strong> as <strong>${lessonTime}</strong>.
+        </p>
+        <p>O comprovante de registro foi anexado e esta disponivel para consulta.</p>
+        <p style="margin: 24px 0; display: flex; gap: 12px; flex-wrap: wrap;">
+          <a
+            href="${lessonsUrl}"
+            style="display: inline-block; background: #3ECF8E; color: #0F172A; text-decoration: none; padding: 12px 18px; border-radius: 8px; font-weight: 600;"
+          >
+            Ver minhas aulas
+          </a>
+          <a
+            href="${receiptUrl}"
+            target="_blank"
+            style="display: inline-block; background: #F1F5F9; color: #0F172A; text-decoration: none; padding: 12px 18px; border-radius: 8px; font-weight: 600;"
+          >
+            Ver comprovante
+          </a>
+        </p>
+        <p style="color: #64748B; font-size: 13px;">Se voce nao reconhece esta mensagem, entre em contato com o suporte.</p>
+      </div>
+    `,
+  })
+}
+
 export async function sendInstructorBookingPaidEmail(params: {
   to: string
   instructorName: string
