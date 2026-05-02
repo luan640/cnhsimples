@@ -81,13 +81,13 @@ export async function POST(request: NextRequest) {
 
   // Verifica pelo perfil real no banco — mais confiável que metadata (pode estar desatualizado)
   const adminForCheck = createAdminClient()
-  const { data: studentProfile } = await adminForCheck
+  const { data: studentRoleCheck } = await adminForCheck
     .from('student_profiles')
     .select('id')
     .eq('user_id', user.id)
     .maybeSingle()
 
-  if (!studentProfile) {
+  if (!studentRoleCheck) {
     return errorResponse('Apenas alunos podem realizar agendamentos.', 403)
   }
 
