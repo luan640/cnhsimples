@@ -90,9 +90,7 @@ export async function GET(request: NextRequest) {
       if (roleParam === 'student' || roleParam === 'instructor') {
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
-          if (!user.user_metadata?.role) {
-            await supabase.auth.updateUser({ data: { role: roleParam } })
-          }
+          await supabase.auth.updateUser({ data: { role: roleParam } })
 
           if (roleParam === 'student') {
             await ensureStudentProfile(user).catch((err) => {

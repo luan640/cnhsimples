@@ -78,7 +78,16 @@ export async function POST(request: NextRequest) {
   } = await supabase.auth.getUser()
 
   if (!user) return errorResponse('Sessão expirada. Faça login para continuar.', 401)
-  if (user.user_metadata?.role !== 'student') {
+
+  // Verifica pelo perfil real no banco — mais confiável que metadata (pode estar desatualizado)
+  const adminForCheck = createAdminClient()
+  const { data: studentProfile } = await adminForCheck
+    .from('student_profiles')
+    .select('id')
+    .eq('user_id', user.id)
+    .maybeSingle()
+
+  if (!studentProfile) {
     return errorResponse('Apenas alunos podem realizar agendamentos.', 403)
   }
 
