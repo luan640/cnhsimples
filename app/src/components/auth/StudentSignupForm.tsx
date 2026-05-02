@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import { Eye, EyeOff, GraduationCap } from 'lucide-react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 
 import { createClient } from '@/lib/supabase/client'
 
@@ -21,7 +21,6 @@ function GoogleIcon() {
 export function StudentSignupForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const oauthHandledRef = useRef(false)
 
   const nextPath = (() => {
     const next = searchParams.get('next')
@@ -37,35 +36,38 @@ export function StudentSignupForm() {
   const [googleLoading, setGoogleLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  useEffect(() => {
-    if (searchParams.get('oauth') !== 'return' || oauthHandledRef.current) return
-    oauthHandledRef.current = true
-    setGoogleLoading(true)
-    createClient().auth.getUser().then(({ data, error: err }) => {
-      if (err || !data.user) {
-        setError('Não foi possível autenticar com o Google. Tente novamente.')
-        setGoogleLoading(false)
-        return
-      }
-      router.replace(nextPath)
-    })
-  }, [nextPath, router, searchParams])
-
   async function handleCreateAccount() {
     setError('')
-    if (!fullName.trim()) { setError('Informe seu nome completo.'); return }
-    if (!email.trim() || !/\S+@\S+\.\S+/.test(email.trim())) { setError('Informe um e-mail válido.'); return }
-    if (password.length < 8) { setError('A senha deve ter pelo menos 8 caracteres.'); return }
+    if (!fullName.trim()) {
+      setError('Informe seu nome completo.')
+      return
+    }
+    if (!email.trim() || !/\S+@\S+\.\S+/.test(email.trim())) {
+      setError('Informe um e-mail valido.')
+      return
+    }
+    if (password.length < 8) {
+      setError('A senha deve ter pelo menos 8 caracteres.')
+      return
+    }
 
     setLoading(true)
     try {
       const res = await fetch('/api/auth/signup/student', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ accountMethod: 'email', email: email.trim(), fullName: fullName.trim(), password }),
+        body: JSON.stringify({
+          accountMethod: 'email',
+          email: email.trim(),
+          fullName: fullName.trim(),
+          password,
+        }),
       })
       const data = await res.json()
-      if (!res.ok) { setError(data.error ?? 'Erro ao criar conta.'); return }
+      if (!res.ok) {
+        setError(data.error ?? 'Erro ao criar conta.')
+        return
+      }
       if (data.nextStep === 'confirm_email') {
         setSuccess(true)
       } else {
@@ -84,10 +86,13 @@ export function StudentSignupForm() {
     const { error: err } = await createClient().auth.signInWithOAuth({
       provider: 'google',
       options: {
-        redirectTo: `${window.location.origin}/cadastro/aluno?oauth=return&next=${encodeURIComponent(nextPath)}`,
+        redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(nextPath)}&role=student`,
       },
     })
-    if (err) { setError(err.message); setGoogleLoading(false) }
+    if (err) {
+      setError(err.message)
+      setGoogleLoading(false)
+    }
   }
 
   const inputClass =
@@ -101,11 +106,11 @@ export function StudentSignupForm() {
       >
         <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-[#D1FAE5] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#065F46]">
           <GraduationCap size={14} />
-          Cadastro concluído
+          Cadastro concluido
         </div>
         <h1 className="text-[28px] font-bold leading-tight text-[#0F172A]">Verifique seu e-mail</h1>
         <p className="mt-2 text-sm leading-6 text-[#64748B]">
-          Enviamos um link de confirmação para <strong>{email}</strong>. Acesse seu e-mail para ativar a conta antes de entrar.
+          Enviamos um link de confirmacao para <strong>{email}</strong>. Acesse seu e-mail para ativar a conta antes de entrar.
         </p>
         <Link
           href="/login/aluno"
@@ -123,34 +128,31 @@ export function StudentSignupForm() {
       className="w-full max-w-md rounded-[18px] border border-[#E2E8F0] bg-white p-6 md:p-8"
       style={{ boxShadow: 'var(--shadow-modal)' }}
     >
-      {/* Header */}
       <div className="mb-6 space-y-3">
         <div className="inline-flex items-center gap-2 rounded-full bg-[#F1F5F9] px-3 py-1 text-xs font-semibold uppercase tracking-[0.14em] text-[#64748B]">
           <GraduationCap size={14} />
-          Área do aluno
+          Area do aluno
         </div>
         <div>
           <h1 className="text-[28px] font-bold leading-tight text-[#0F172A]">Criar conta</h1>
           <p className="mt-2 text-sm leading-6 text-[#64748B]">
-            Encontre instrutores credenciados perto de você e agende aulas com facilidade.
+            Encontre instrutores credenciados perto de voce e agende aulas com facilidade.
           </p>
         </div>
         <p className="text-sm text-[#64748B]">
-          Já tem uma conta?{' '}
+          Ja tem uma conta?{' '}
           <Link href="/login/aluno" className="font-semibold text-[#0F172A] hover:text-[#0284C7]">
             Entrar como aluno
           </Link>
         </p>
       </div>
 
-      {/* Error */}
       {error && (
         <div className="mb-4 rounded-[12px] border border-[#FECACA] bg-[#FEF2F2] px-4 py-3 text-sm text-[#B91C1C]">
           {error}
         </div>
       )}
 
-      {/* Google */}
       <div className="mb-4">
         <button
           type="button"
@@ -158,29 +160,31 @@ export function StudentSignupForm() {
           disabled={googleLoading || loading}
           className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-[8px] border border-[#E2E8F0] px-4 text-sm font-medium text-[#0F172A] transition-colors hover:bg-[#F8FAFC] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {googleLoading
-            ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#E2E8F0] border-t-[#4285F4]" />
-            : <GoogleIcon />}
+          {googleLoading ? (
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#E2E8F0] border-t-[#4285F4]" />
+          ) : (
+            <GoogleIcon />
+          )}
           {googleLoading ? 'Conectando...' : 'Continuar com Google'}
         </button>
       </div>
 
-      {/* Divider */}
       <div className="mb-4 flex items-center gap-3 text-xs uppercase tracking-[0.14em] text-[#94A3B8]">
         <span className="h-px flex-1 bg-[#E2E8F0]" />
         ou
         <span className="h-px flex-1 bg-[#E2E8F0]" />
       </div>
 
-      {/* Fields */}
       <div className="space-y-4">
         <div className="space-y-1.5">
-          <label htmlFor="signup-name" className="text-sm font-medium text-[#0F172A]">Nome completo</label>
+          <label htmlFor="signup-name" className="text-sm font-medium text-[#0F172A]">
+            Nome completo
+          </label>
           <input
             id="signup-name"
             type="text"
             value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
+            onChange={(event) => setFullName(event.target.value)}
             placeholder="Seu nome completo"
             autoComplete="name"
             className={inputClass}
@@ -188,12 +192,14 @@ export function StudentSignupForm() {
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="signup-email" className="text-sm font-medium text-[#0F172A]">E-mail</label>
+          <label htmlFor="signup-email" className="text-sm font-medium text-[#0F172A]">
+            E-mail
+          </label>
           <input
             id="signup-email"
             type="email"
             value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            onChange={(event) => setEmail(event.target.value)}
             placeholder="seu@email.com"
             autoComplete="email"
             className={inputClass}
@@ -201,21 +207,23 @@ export function StudentSignupForm() {
         </div>
 
         <div className="space-y-1.5">
-          <label htmlFor="signup-password" className="text-sm font-medium text-[#0F172A]">Senha</label>
+          <label htmlFor="signup-password" className="text-sm font-medium text-[#0F172A]">
+            Senha
+          </label>
           <div className="flex min-h-11 items-center rounded-[8px] border border-[#E2E8F0] px-3 transition-colors focus-within:border-[#3ECF8E]">
             <input
               id="signup-password"
               type={showPassword ? 'text' : 'password'}
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && void handleCreateAccount()}
-              placeholder="Mínimo de 8 caracteres"
+              onChange={(event) => setPassword(event.target.value)}
+              onKeyDown={(event) => event.key === 'Enter' && void handleCreateAccount()}
+              placeholder="Minimo de 8 caracteres"
               autoComplete="new-password"
               className="min-w-0 flex-1 bg-transparent text-base text-[#0F172A] outline-none placeholder:text-[#94A3B8]"
             />
             <button
               type="button"
-              onClick={() => setShowPassword((v) => !v)}
+              onClick={() => setShowPassword((value) => !value)}
               className="ml-3 text-[#64748B] transition-colors hover:text-[#0F172A]"
               aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
             >
@@ -236,7 +244,7 @@ export function StudentSignupForm() {
       </div>
 
       <p className="mt-5 text-xs leading-5 text-[#64748B]">
-        Ao continuar, você concorda com os nossos Termos de Uso e Política de Privacidade.
+        Ao continuar, voce concorda com os nossos Termos de Uso e Politica de Privacidade.
       </p>
     </div>
   )

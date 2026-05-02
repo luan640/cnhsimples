@@ -164,7 +164,6 @@ export function DashboardHome({ profile, stats }: Props) {
               ? `R$ ${stats.receitaMes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`
               : 'R$ 0,00'
           }
-          sub="sua parte (80%)"
           accent="#0284C7"
         />
         <KPICard

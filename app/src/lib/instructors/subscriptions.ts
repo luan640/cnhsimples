@@ -105,13 +105,15 @@ async function activateInstructorFromSubscription(instructorId: string) {
   const admin = createAdminClient()
   const { data: profile, error: profileError } = await admin
     .from('instructor_profiles')
-    .select('id, user_id, full_name')
+    .select('id, user_id, full_name, status')
     .eq('id', instructorId)
     .single()
 
   if (profileError) {
     throw new Error(profileError.message)
   }
+
+  const alreadyActive = profile.status === 'active'
 
   const { error: statusError } = await admin
     .from('instructor_profiles')
@@ -130,23 +132,22 @@ async function activateInstructorFromSubscription(instructorId: string) {
     rejection_reason: null,
   })
 
-  try {
-    const { data: authUser } = await admin.auth.admin.getUserById(profile.user_id)
-    const email = authUser.user?.email
-    const name = authUser.user?.user_metadata?.full_name ?? profile.full_name ?? 'instrutor'
+  if (!alreadyActive) {
+    try {
+      const { data: authUser } = await admin.auth.admin.getUserById(profile.user_id)
+      const email = authUser.user?.email
+      const name = authUser.user?.user_metadata?.full_name ?? profile.full_name ?? 'instrutor'
 
-    if (email) {
-      await sendInstructorActivatedEmail({
-        to: email,
-        name,
-      })
+      if (email) {
+        await sendInstructorActivatedEmail({
+          to: email,
+          name,
+        })
+      }
+    } catch (error) {
+      console.error('[email] Falha ao enviar ativacao automatica da mensalidade:', error)
     }
-  } catch (error) {
-    console.error('[email] Falha ao enviar ativacao automatica da mensalidade:', error)
   }
-
-  revalidatePath('/painel')
-  revalidatePath('/buscar')
 }
 
 export async function syncLatestInstructorPlanSubscriptionByEmail(

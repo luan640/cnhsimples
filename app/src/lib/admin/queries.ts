@@ -41,6 +41,18 @@ export type RevenueSplitSettings = {
   defaultPlatformSplitRate: number
 }
 
+export type StudentRow = {
+  id: string
+  user_id: string
+  full_name: string
+  phone: string | null
+  city: string | null
+  neighborhood: string | null
+  category_interest: string | null
+  has_cnh: boolean | null
+  created_at: string
+}
+
 export type DocumentRow = {
   id: string
   instructor_id: string
@@ -69,6 +81,7 @@ export type AdminStats = {
 }
 
 type InstructorProfileSummary = Pick<InstructorRow, 'id' | 'user_id' | 'full_name' | 'status' | 'category' | 'neighborhood' | 'city' | 'created_at' | 'cnh_expires_at' | 'hourly_rate' | 'rating' | 'hidden_from_search'>
+type StudentProfileSummary = StudentRow
 
 type InstructorProfileName = {
   id: string
@@ -163,6 +176,21 @@ export async function getRevenueSplitSettings(): Promise<RevenueSplitSettings> {
 }
 
 // ── Withdrawals ──────────────────────────────────────────
+
+export async function listStudents(): Promise<StudentRow[]> {
+  const admin = createAdminClient()
+
+  const { data, error } = await admin
+    .from('student_profiles')
+    .select('id, user_id, full_name, phone, city, neighborhood, category_interest, has_cnh, created_at')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('[admin] listStudents:', error.message)
+  }
+
+  return (data ?? []) as StudentProfileSummary[]
+}
 
 export async function listWithdrawals(status?: string): Promise<WithdrawalRow[]> {
   const admin = createAdminClient()
