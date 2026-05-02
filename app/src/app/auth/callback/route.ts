@@ -95,7 +95,9 @@ export async function GET(request: NextRequest) {
           }
 
           if (roleParam === 'student') {
-            await ensureStudentProfile(user)
+            await ensureStudentProfile(user).catch((err) => {
+              console.error('[auth/callback] ensureStudentProfile falhou:', err)
+            })
           }
         }
       }
