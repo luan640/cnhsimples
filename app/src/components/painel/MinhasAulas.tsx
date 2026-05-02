@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState, useTransition } from 'react'
+import { useRef, useState } from 'react'
 import {
   BookCheck,
   CalendarCheck,
@@ -15,7 +15,6 @@ import {
 } from 'lucide-react'
 
 import type { InstructorLesson } from '@/lib/instructors/aulas'
-import { confirmLesson } from '@/app/painel/aulas/actions'
 
 function formatDate(dateStr: string) {
   if (!dateStr) return ''
@@ -64,7 +63,7 @@ function ConfirmModal({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const [isPending, startTransition] = useTransition()
+  const [isPending, setIsPending] = useState(false)
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null
@@ -80,21 +79,28 @@ function ConfirmModal({
       return
     }
 
-    const formData = new FormData()
-    formData.append('bookingId', lesson.id)
-    formData.append('receipt', selectedFile)
+    setIsPending(true)
+    setError(null)
 
-    startTransition(async () => {
-      const result = await confirmLesson(formData)
+    try {
+      const formData = new FormData()
+      formData.append('bookingId', lesson.id)
+      formData.append('receipt', selectedFile)
 
-      if (!result.ok) {
-        setError(result.error)
+      const res = await fetch('/api/aulas/confirmar', { method: 'POST', body: formData })
+      const json = await res.json()
+
+      if (!res.ok || !json.ok) {
+        setError(json.error ?? 'Erro ao confirmar aula.')
         return
       }
 
-      // We don't have the public URL here — will be refetched on router.refresh()
-      onConfirmed(lesson.id, '')
-    })
+      onConfirmed(lesson.id, json.receiptUrl ?? '')
+    } catch {
+      setError('Erro de conexão. Tente novamente.')
+    } finally {
+      setIsPending(false)
+    }
   }
 
   return (
@@ -353,10 +359,12 @@ export function MinhasAulas({ lessons: initial }: { lessons: InstructorLesson[] 
 
   const shown = tab === 'proximas' ? proximas : historico
 
-  function handleConfirmed(bookingId: string) {
+  function handleConfirmed(bookingId: string, receiptUrl: string) {
     setLessons((prev) =>
       prev.map((l) =>
-        l.id === bookingId ? { ...l, status: 'completed' as const } : l
+        l.id === bookingId
+          ? { ...l, status: 'completed' as const, receipt_url: receiptUrl }
+          : l
       )
     )
     setConfirmingLesson(null)

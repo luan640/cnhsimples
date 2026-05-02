@@ -268,7 +268,7 @@ function BookingChip({
               style={{ background: '#DBEAFE', color: '#1E40AF' }}
             >
               <FileCheck2 size={10} />
-              check comprovante
+              Comprovante DETRAN
             </span>
           ) : (
             <span
