@@ -287,17 +287,35 @@ function LessonChip({
           Sua parte: <span className="font-bold" style={{ color: '#0F172A' }}>{formatCurrency(lesson.instructor_amount)}</span>
         </span>
 
-        {lesson.status === 'confirmed' && (
-          <button
-            type="button"
-            onClick={onConfirm}
-            className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-90"
-            style={{ background: '#3ECF8E', color: '#0F172A' }}
-          >
-            <FileCheck2 size={12} />
-            Confirmar aula
-          </button>
-        )}
+        {lesson.status === 'confirmed' && (() => {
+          const nowFortaleza = new Date(
+            new Date().toLocaleString('en-US', { timeZone: 'America/Fortaleza' })
+          )
+          const [y, m, d] = lesson.slot_date.split('-').map(Number)
+          const slotStart = new Date(y, m - 1, d, lesson.slot_hour, lesson.slot_minute)
+          const canConfirm = nowFortaleza >= slotStart
+
+          return canConfirm ? (
+            <button
+              type="button"
+              onClick={onConfirm}
+              className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold transition-colors hover:opacity-90"
+              style={{ background: '#3ECF8E', color: '#0F172A' }}
+            >
+              <FileCheck2 size={12} />
+              Confirmar aula
+            </button>
+          ) : (
+            <span
+              className="inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold"
+              style={{ background: '#F1F5F9', color: '#94A3B8' }}
+              title={`Disponível após ${lesson.slot_date} às ${String(lesson.slot_hour).padStart(2,'0')}:${String(lesson.slot_minute).padStart(2,'0')}`}
+            >
+              <Clock size={10} />
+              Aguardando horário
+            </span>
+          )
+        })()}
 
         {lesson.status === 'completed' && lesson.receipt_url && (
           <a

@@ -77,6 +77,25 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Aula já confirmada.' }, { status: 409 })
   }
 
+  // Verifica se o horário da aula já passou (fuso de Fortaleza, UTC-3)
+  const slot = Array.isArray(booking.availability_slots)
+    ? (booking.availability_slots as any[])[0]
+    : (booking.availability_slots as any)
+
+  if (slot?.date) {
+    const nowFortaleza = new Date(
+      new Date().toLocaleString('en-US', { timeZone: 'America/Fortaleza' })
+    )
+    const [y, m, d] = (slot.date as string).split('-').map(Number)
+    const slotStart = new Date(y, m - 1, d, slot.hour ?? 0, slot.minute ?? 0)
+    if (nowFortaleza < slotStart) {
+      return NextResponse.json(
+        { error: 'A aula ainda não ocorreu. Confirme apenas após o horário do slot.' },
+        { status: 400 }
+      )
+    }
+  }
+
   // Upload file to Supabase Storage
   const arrayBuffer = await file.arrayBuffer()
   const buffer = Buffer.from(arrayBuffer)
@@ -105,10 +124,6 @@ export async function POST(request: NextRequest) {
   }
 
   // Credit wallets
-  const slot = Array.isArray(booking.availability_slots)
-    ? (booking.availability_slots as any[])[0]
-    : (booking.availability_slots as any)
-
   try {
     await completeSingleLesson({
       bookingId,
