@@ -633,9 +633,8 @@ export async function confirmBookingGroupPayment(
   const instructorAmount = round2(Number(bookingGroup.instructor_amount))
   const platformAmount = round2(Number(bookingGroup.platform_amount))
 
-  // Booking group já estava pago — apenas garante crédito nas carteiras (idempotente)
+  // Booking group já estava pago — nada a fazer (carteiras são creditadas apenas na confirmação manual da aula)
   if (bookingGroup.status === 'paid') {
-    await ensureWalletsCredited(admin, bookingGroupId, bookingGroup.instructor_id, instructorAmount, platformAmount, slotIds.length)
     return
   }
 
@@ -798,13 +797,7 @@ export async function getBookingGroupStatus(
   if (bookingGroup.status === 'cancelled' || bookingGroup.status === 'expired') {
     return { status: bookingGroup.status }
   }
-  // Se já está pago, garante crédito nas carteiras (recupera falhas anteriores) e retorna
   if (bookingGroup.status === 'paid') {
-    try {
-      await confirmBookingGroupPayment(bookingGroupId, '')
-    } catch {
-      // Idempotência — ignora erros aqui; o crédito já pode ter sido feito
-    }
     const communication = await getBookingGroupCommunicationData(admin, bookingGroupId, studentId)
     return { status: 'paid', whatsappUrl: communication?.whatsappUrl ?? null }
   }
