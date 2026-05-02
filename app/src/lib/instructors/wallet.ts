@@ -1,5 +1,6 @@
 import { unstable_noStore as noStore } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 
 export type WalletData = {
   walletId: string | null
@@ -34,6 +35,7 @@ export type InstructorPixInfo = {
 export async function getInstructorWallet(profileId: string): Promise<WalletData> {
   noStore()
   const supabase = await createClient()
+  const admin = createAdminClient()
 
   const { data: wallet } = await supabase
     .from('wallets')
@@ -42,8 +44,8 @@ export async function getInstructorWallet(profileId: string): Promise<WalletData
     .eq('owner_type', 'instructor')
     .maybeSingle()
 
-  // Aulas pagas mas ainda não confirmadas pelo instrutor (valor pendente de liberação)
-  const { data: confirmedBookings } = await supabase
+  // Usa admin client para bypass de RLS — instructor_id é profile.id, não auth.uid()
+  const { data: confirmedBookings } = await admin
     .from('bookings')
     .select('instructor_amount')
     .eq('instructor_id', profileId)
