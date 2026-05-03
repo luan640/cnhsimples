@@ -181,7 +181,7 @@ export function AuthLoginForm({ role, nextPath }: AuthLoginFormProps) {
             <input type="checkbox" className="h-4 w-4 rounded border-[#CBD5E1]" />
             Lembrar de mim
           </label>
-          <Link href="/" className="font-medium text-[#0F172A] hover:text-[#0284C7]">
+          <Link href="/esqueci-a-senha" className="font-medium text-[#0F172A] hover:text-[#0284C7]">
             Esqueci minha senha
           </Link>
         </div>
