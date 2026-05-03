@@ -50,7 +50,7 @@ type Props = {
 type LessonMode = 'meeting' | 'pickup'
 type LessonPurpose = 'exam' | 'fear'
 type PaymentMethod = 'pix' | 'card'
-type Step = 1 | 2 | 3 | 4
+type Step = 1 | 2 | 3 | 4 | 5
 type CheckoutPhase = 'idle' | 'active' | 'success'
 
 type CepLookupResult = {
@@ -61,9 +61,10 @@ type CepLookupResult = {
 
 const STEPS = [
   { n: 1, label: 'Serviço' },
-  { n: 2, label: 'Formato' },
-  { n: 3, label: 'Agenda' },
-  { n: 4, label: 'Pagamento' },
+  { n: 2, label: 'Objetivo' },
+  { n: 3, label: 'Formato' },
+  { n: 4, label: 'Agenda' },
+  { n: 5, label: 'Pagamento' },
 ] as const
 
 // ── helpers ──────────────────────────────────────────────────────────────────
@@ -182,7 +183,7 @@ function SectionHeading({ step, title, sub }: { step: number; title: string; sub
   return (
     <div className="mb-5">
       <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#3ECF8E]">
-        Etapa {step} de 4
+        Etapa {step} de 5
       </p>
       <h2 className="mt-1 text-xl font-bold text-[#0F172A]">{title}</h2>
       {sub ? <p className="mt-1 text-sm text-[#64748B]">{sub}</p> : null}
@@ -383,7 +384,69 @@ function StepService({
   )
 }
 
-// ── step 2: format ────────────────────────────────────────────────────────────
+// ── step 2: purpose ───────────────────────────────────────────────────────────
+
+function StepPurpose({
+  lessonPurpose,
+  onPurpose,
+}: {
+  lessonPurpose: LessonPurpose | null
+  onPurpose: (p: LessonPurpose) => void
+}) {
+  return (
+    <div>
+      <SectionHeading step={2} title="Objetivo da aula" sub="Selecione o que você quer trabalhar nesta aula." />
+
+      <div className="grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => onPurpose('exam')}
+          className="rounded-[12px] border px-4 py-5 text-left transition-all"
+          style={{
+            borderColor: lessonPurpose === 'exam' ? '#3ECF8E' : '#E2E8F0',
+            background: lessonPurpose === 'exam' ? 'rgba(62,207,142,0.08)' : '#FFFFFF',
+            boxShadow: lessonPurpose === 'exam' ? '0 0 0 1px #3ECF8E' : '0 1px 3px rgba(0,0,0,0.06)',
+          }}
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <GraduationCap size={16} style={{ color: lessonPurpose === 'exam' ? '#3ECF8E' : '#94A3B8' }} />
+            <span className="text-sm font-semibold text-[#0F172A]">Exame</span>
+          </div>
+          <p className="text-xs text-[#64748B]">Preparação para o exame de habilitação.</p>
+          {lessonPurpose === 'exam' && (
+            <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-[#3ECF8E]">
+              <Check size={11} /> Selecionado
+            </div>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onPurpose('fear')}
+          className="rounded-[12px] border px-4 py-5 text-left transition-all"
+          style={{
+            borderColor: lessonPurpose === 'fear' ? '#F97316' : '#E2E8F0',
+            background: lessonPurpose === 'fear' ? 'rgba(249,115,22,0.08)' : '#FFFFFF',
+            boxShadow: lessonPurpose === 'fear' ? '0 0 0 1px #F97316' : '0 1px 3px rgba(0,0,0,0.06)',
+          }}
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <Heart size={16} style={{ color: lessonPurpose === 'fear' ? '#F97316' : '#94A3B8' }} />
+            <span className="text-sm font-semibold text-[#0F172A]">Perder o medo</span>
+          </div>
+          <p className="text-xs text-[#64748B]">Ganhar confiança ao volante.</p>
+          {lessonPurpose === 'fear' && (
+            <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-[#F97316]">
+              <Check size={11} /> Selecionado
+            </div>
+          )}
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ── step 3: format ────────────────────────────────────────────────────────────
 
 function PickupPanel({
   distanceKm,
@@ -542,8 +605,6 @@ function StepFormat({
   service,
   lessonMode,
   onMode,
-  lessonPurpose,
-  onPurpose,
   distanceKm,
   isPkg,
   matchedRange,
@@ -558,10 +619,8 @@ function StepFormat({
   isOutOfRange,
 }: {
   service: PublicInstructorServiceOption
-  lessonMode: LessonMode
+  lessonMode: LessonMode | null
   onMode: (m: LessonMode) => void
-  lessonPurpose: LessonPurpose
-  onPurpose: (p: LessonPurpose) => void
   distanceKm: number | null
   isPkg: boolean
   matchedRange: PickupRange | null
@@ -577,57 +636,7 @@ function StepFormat({
 }) {
   return (
     <div>
-      <SectionHeading step={2} title="Formato da aula" />
-
-      {/* Purpose selector */}
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8]">Objetivo da aula</p>
-      <div className="mb-5 grid grid-cols-2 gap-3">
-        <button
-          type="button"
-          onClick={() => onPurpose('exam')}
-          className="rounded-[12px] border px-4 py-4 text-left transition-all"
-          style={{
-            borderColor: lessonPurpose === 'exam' ? '#3ECF8E' : '#E2E8F0',
-            background: lessonPurpose === 'exam' ? 'rgba(62,207,142,0.08)' : '#FFFFFF',
-            boxShadow: lessonPurpose === 'exam' ? '0 0 0 1px #3ECF8E' : '0 1px 3px rgba(0,0,0,0.06)',
-          }}
-        >
-          <div className="mb-2 flex items-center gap-2">
-            <GraduationCap size={16} style={{ color: lessonPurpose === 'exam' ? '#3ECF8E' : '#94A3B8' }} />
-            <span className="text-sm font-semibold text-[#0F172A]">Exame</span>
-          </div>
-          <p className="text-xs text-[#64748B]">Preparação para o exame de habilitação.</p>
-          {lessonPurpose === 'exam' && (
-            <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-[#3ECF8E]">
-              <Check size={11} /> Selecionado
-            </div>
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={() => onPurpose('fear')}
-          className="rounded-[12px] border px-4 py-4 text-left transition-all"
-          style={{
-            borderColor: lessonPurpose === 'fear' ? '#F97316' : '#E2E8F0',
-            background: lessonPurpose === 'fear' ? 'rgba(249,115,22,0.08)' : '#FFFFFF',
-            boxShadow: lessonPurpose === 'fear' ? '0 0 0 1px #F97316' : '0 1px 3px rgba(0,0,0,0.06)',
-          }}
-        >
-          <div className="mb-2 flex items-center gap-2">
-            <Heart size={16} style={{ color: lessonPurpose === 'fear' ? '#F97316' : '#94A3B8' }} />
-            <span className="text-sm font-semibold text-[#0F172A]">Perder o medo</span>
-          </div>
-          <p className="text-xs text-[#64748B]">Ganhar confiança ao volante.</p>
-          {lessonPurpose === 'fear' && (
-            <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-[#F97316]">
-              <Check size={11} /> Selecionado
-            </div>
-          )}
-        </button>
-      </div>
-
-      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8]">Local de encontro</p>
+      <SectionHeading step={3} title="Local de encontro" sub="Como será o início da aula?" />
 
       {/* Selected service summary */}
       <div
@@ -742,7 +751,7 @@ function StepAgenda({
   return (
     <div>
       <SectionHeading
-        step={3}
+        step={4}
         title="Escolha os horários"
         sub={
           isPkg
@@ -900,7 +909,7 @@ function StepPayment({
 
   return (
     <div>
-      <SectionHeading step={4} title="Forma de pagamento" />
+      <SectionHeading step={5} title="Forma de pagamento" />
 
       {/* Price summary */}
       <div
@@ -1015,8 +1024,8 @@ function StepIndicator({ current }: { current: Step }) {
 export function InstructorBookingView({ instructor, studentLat, studentLon, studentCep, studentPhone }: Props) {
   const [step, setStep] = useState<Step>(1)
   const [selectedServiceId, setSelectedServiceId] = useState(instructor.services[0]?.id ?? '')
-  const [lessonMode, setLessonMode] = useState<LessonMode>('meeting')
-  const [lessonPurpose, setLessonPurpose] = useState<LessonPurpose>('exam')
+  const [lessonMode, setLessonMode] = useState<LessonMode | null>(null)
+  const [lessonPurpose, setLessonPurpose] = useState<LessonPurpose | null>(null)
   const [selectedDate, setSelectedDate] = useState(instructor.available_slots[0]?.date ?? '')
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([])
   const [availableSlots, setAvailableSlots] = useState<PublicInstructorAvailableSlot[]>(instructor.available_slots)
@@ -1152,7 +1161,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   const previewTotalAmount = Math.round((previewBaseAmount + previewPickupSurchargeTotal) * 100) / 100
 
   useEffect(() => {
-    if (!selectedService?.accepts_home_pickup && lessonMode === 'pickup') setLessonMode('meeting')
+    if (!selectedService?.accepts_home_pickup && lessonMode === 'pickup') setLessonMode(null)
   }, [lessonMode, selectedService])
 
   useEffect(() => {
@@ -1168,7 +1177,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   useEffect(() => { setSelectedSlotIds([]) }, [selectedServiceId])
 
   useEffect(() => {
-    if (step < 3 || checkoutPhase === 'success') return
+    if (step < 4 || checkoutPhase === 'success') return
 
     void refreshAvailableSlots()
 
@@ -1248,13 +1257,14 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   // per-step next validity
   const canNext: Record<Step, boolean> = {
     1: Boolean(selectedServiceId),
-    2: lessonMode !== 'pickup' || (hasPickupCoordinates && !isPickupOutOfRange),
-    3: selectedSlotCount > 0 && (!isPkg || selectedSlotCount === (selectedService?.lesson_count ?? 0)),
-    4: true,
+    2: lessonPurpose !== null,
+    3: lessonMode !== null && (lessonMode !== 'pickup' || (hasPickupCoordinates && !isPickupOutOfRange)),
+    4: selectedSlotCount > 0 && (!isPkg || selectedSlotCount === (selectedService?.lesson_count ?? 0)),
+    5: true,
   }
 
   function handleNext() {
-    if (step < 4) setStep((s) => (s + 1) as Step)
+    if (step < 5) setStep((s) => (s + 1) as Step)
   }
 
   function handleBack() {
@@ -1455,13 +1465,18 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
           />
         )}
 
-        {step === 2 && selectedService && (
+        {step === 2 && (
+          <StepPurpose
+            lessonPurpose={lessonPurpose}
+            onPurpose={setLessonPurpose}
+          />
+        )}
+
+        {step === 3 && selectedService && (
           <StepFormat
             service={selectedService}
             lessonMode={lessonMode}
             onMode={setLessonMode}
-            lessonPurpose={lessonPurpose}
-            onPurpose={setLessonPurpose}
             distanceKm={distanceKm}
             isPkg={isPkg}
             matchedRange={matchedPickupRange}
@@ -1477,7 +1492,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
           />
         )}
 
-        {step === 3 && selectedService && (
+        {step === 4 && selectedService && (
           <StepAgenda
             service={selectedService}
             isPkg={isPkg}
@@ -1493,7 +1508,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
           />
         )}
 
-        {step === 4 && selectedService && checkoutPhase === 'success' && (
+        {step === 5 && selectedService && checkoutPhase === 'success' && (
           <div className="flex flex-col items-center gap-4 py-8 text-center">
             <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#D1FAE5]">
               <CalendarCheck size={32} className="text-[#16A34A]" />
@@ -1523,11 +1538,11 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
           </div>
         )}
 
-        {step === 4 && selectedService && checkoutPhase === 'active' && (
+        {step === 5 && selectedService && checkoutPhase === 'active' && (
           <div>
             <div className="mb-5">
               <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#3ECF8E]">
-                Etapa 4 de 4
+                Etapa 5 de 5
               </p>
               <h2 className="mt-1 text-xl font-bold text-[#0F172A]">Pagamento</h2>
             </div>
@@ -1537,8 +1552,8 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
                 instructor_id: instructor.id,
                 service_id: selectedServiceId,
                 slot_ids: selectedSlotIds,
-                lesson_mode: lessonMode,
-                lesson_purpose: lessonPurpose,
+                lesson_mode: lessonMode ?? 'meeting',
+                lesson_purpose: lessonPurpose ?? 'exam',
                 total_amount: totalAmount,
               }}
               onSuccess={handleCheckoutSuccess}
@@ -1548,7 +1563,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
           </div>
         )}
 
-        {step === 4 && selectedService && checkoutPhase === 'idle' && (
+        {step === 5 && selectedService && checkoutPhase === 'idle' && (
           <>
             {checkoutError && (
               <div className="mb-4 flex items-start gap-2 rounded-[12px] border border-red-200 bg-red-50 px-4 py-3">
@@ -1562,7 +1577,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
               service={selectedService}
               isPkg={isPkg}
               selectedSlotCount={selectedSlotCount}
-              lessonMode={lessonMode}
+              lessonMode={lessonMode ?? 'meeting'}
               pickupSurchargePerLesson={pickupSurchargePerLesson}
               pickupTripCount={pickupTripCount}
               baseAmount={baseAmount}
@@ -1597,9 +1612,9 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
                 <>
                   <p className="truncate text-xs text-[#64748B]">{selectedService.title}</p>
                   <p className="text-sm font-bold text-[#0F172A]">
-                    {step === 4
+                    {step === 5
                       ? fmt(totalAmount)
-                      : step >= 3 && selectedSlotCount > 0
+                      : step >= 4 && selectedSlotCount > 0
                         ? `${fmt(totalAmount)}${pickupSurchargeTotal > 0 ? ` (incl. busca)` : ''}`
                         : `${fmt(previewTotalAmount)}${previewPickupSurchargeTotal > 0 ? ` (incl. busca)` : ''}`}
                   </p>
@@ -1610,12 +1625,12 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
             <button
               type="button"
               disabled={!canNext[step]}
-              onClick={step < 4 ? handleNext : handleStartCheckout}
+              onClick={step < 5 ? handleNext : handleStartCheckout}
               className="inline-flex h-12 shrink-0 items-center gap-2 rounded-[12px] px-6 text-sm font-semibold transition-opacity disabled:cursor-not-allowed disabled:opacity-40"
-              style={{ background: step === 4 ? '#F97316' : '#3ECF8E', color: '#052E16' }}
+              style={{ background: step === 5 ? '#F97316' : '#3ECF8E', color: '#052E16' }}
             >
-              {step === 4 ? 'Ir para pagamento' : 'Próximo'}
-              {step < 4 && <ChevronRight size={16} />}
+              {step === 5 ? 'Ir para pagamento' : 'Próximo'}
+              {step < 5 && <ChevronRight size={16} />}
             </button>
           </div>
         </div>
