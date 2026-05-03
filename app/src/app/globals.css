@@ -46,7 +46,7 @@
   --radius-lg:                     var(--radius);
   --radius-xl:                     calc(var(--radius) * 1.4);
 
-  /* ── CNH Simples custom tokens ── */
+  /* ── Direção Fácil custom tokens ── */
   --color-brand:                   var(--brand);
   --color-brand-dark:              var(--brand-dark);
   --color-brand-light:             var(--brand-light);
@@ -98,7 +98,7 @@
   --chart-4:                 oklch(0.71 0.14 50);     /* warning âmbar */
   --chart-5:                 oklch(0.577 0.245 27);   /* erro vermelho */
 
-  /* ── CNH Simples custom ── */
+  /* ── Direção Fácil custom ── */
   --brand:                   #3ECF8E;
   --brand-dark:              #2BBF7E;
   --brand-light:             #D1FAE5;

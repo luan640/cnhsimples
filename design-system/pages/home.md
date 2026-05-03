@@ -1,4 +1,4 @@
-# Tela Inicial (Homepage) — CNH Simples
+# Tela Inicial (Homepage) — Direção Fácil
 > Inspiração: Preply homepage. Mobile-first. Consultar MASTER.md para tokens.
 
 ---
@@ -13,7 +13,7 @@ A busca de instrutor é o **único CTA primário** do hero.
 
 ### 1. Navbar (fixo no topo)
 ```
-[Logo CNH Simples]          [Encontrar Instrutor] [Seja Instrutor] [Entrar]
+[Logo Direção Fácil]          [Encontrar Instrutor] [Seja Instrutor] [Entrar]
 ```
 - Mobile: hamburger menu + botão "Entrar" visível
 - Fundo: transparente no hero, `#1c1c1c` (sidebar dark) ao rolar
@@ -117,7 +117,7 @@ Subheading: "Todos credenciados pelo DETRAN-CE"
 
 ```
 [Logo]  Sobre  Termos  Privacidade  Contato
-© 2025 CNH Simples — Fortaleza, CE
+© 2025 Direção Fácil — Fortaleza, CE
 ```
 
 ---

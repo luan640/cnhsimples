@@ -7,7 +7,7 @@ type AuthShellProps = {
   eyebrow?: string
 }
 
-export function AuthShell({ children, eyebrow = 'CNH Simples' }: AuthShellProps) {
+export function AuthShell({ children, eyebrow = 'Direção Fácil' }: AuthShellProps) {
   return (
     <main className="min-h-screen bg-[#F8FAFC] px-4 py-6 md:px-6">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] max-w-6xl flex-col">

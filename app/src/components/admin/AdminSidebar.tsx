@@ -40,7 +40,7 @@ export function AdminSidebar() {
           <Car size={15} color="#0F172A" />
         </div>
         <div className="min-w-0">
-          <p className="text-sm font-semibold leading-none text-white">CNH Simples</p>
+          <p className="text-sm font-semibold leading-none text-white">Direção Fácil</p>
           <p className="mt-0.5 text-[11px]" style={{ color: '#a1a1aa' }}>
             Painel Admin
           </p>

@@ -52,7 +52,7 @@ export function AdminLoginForm() {
           <ShieldCheck size={28} style={{ color: '#3ECF8E' }} />
         </div>
         <h1 className="text-xl font-bold" style={{ color: '#0F172A' }}>Acesso Administrativo</h1>
-        <p className="text-sm mt-1" style={{ color: '#64748B' }}>CNH Simples — painel de gestão</p>
+        <p className="text-sm mt-1" style={{ color: '#64748B' }}>Direção Fácil — painel de gestão</p>
       </div>
 
       {error && (

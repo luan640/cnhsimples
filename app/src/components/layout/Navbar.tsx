@@ -80,7 +80,7 @@ export function Navbar() {
           <div className="relative h-11 w-[148px] md:h-12 md:w-[164px]">
             <Image
               src="/brand-logo.png"
-              alt="CNH Simples"
+              alt="Direção Fácil"
               fill
               className="object-contain object-left"
               sizes="164px"

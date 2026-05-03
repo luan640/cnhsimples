@@ -9,11 +9,11 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'CNH Simples — Instrutores autônomos em Fortaleza',
+  title: 'Direção Fácil — Instrutores autônomos em Fortaleza',
   description: 'Conecte-se com instrutores autônomos credenciados pelo DETRAN-CE. Agende sua aula, pague online e aprenda a dirigir com quem entende.',
   keywords: 'instrutor de direção Fortaleza, aula de direção, CNH, autoescola particular, instrutor autônomo Ceará',
   openGraph: {
-    title: 'CNH Simples',
+    title: 'Direção Fácil',
     description: 'Instrutores autônomos credenciados em Fortaleza-CE',
     locale: 'pt_BR',
     type: 'website',

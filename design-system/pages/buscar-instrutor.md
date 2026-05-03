@@ -1,4 +1,4 @@
-# Tela Buscar Instrutor — CNH Simples
+# Tela Buscar Instrutor — Direção Fácil
 > Inspiração: Preply "Find Tutor" page. Mobile-first. Consultar MASTER.md para tokens.
 
 ---

@@ -27,7 +27,7 @@ function getEmailConfig() {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
     from: process.env.SMTP_FROM_EMAIL,
-    fromName: process.env.SMTP_FROM_NAME ?? 'CNH Simples',
+    fromName: process.env.SMTP_FROM_NAME ?? 'Direção Fácil',
     appUrl: process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000',
   }
 }
@@ -90,13 +90,13 @@ export async function sendInstructorDocsApprovedEmail(params: {
 
   return sendEmail({
     to: params.to,
-    subject: 'Seus documentos foram aprovados no CNH Simples',
-    text: `Ola, ${params.name}. Seus documentos foram aprovados com sucesso no CNH Simples. Entre na sua conta para acompanhar as proximas etapas: ${loginUrl}`,
+    subject: 'Seus documentos foram aprovados no Direção Fácil',
+    text: `Ola, ${params.name}. Seus documentos foram aprovados com sucesso no Direção Fácil. Entre na sua conta para acompanhar as proximas etapas: ${loginUrl}`,
     html: `
       <div style="font-family: Arial, sans-serif; color: #0F172A; line-height: 1.6;">
         <h1 style="margin-bottom: 12px;">Documentos aprovados com sucesso</h1>
         <p>Ola, ${params.name}.</p>
-        <p>Seu cadastro documental no <strong>CNH Simples</strong> foi analisado e aprovado pelo administrador.</p>
+        <p>Seu cadastro documental no <strong>Direção Fácil</strong> foi analisado e aprovado pelo administrador.</p>
         <p>Agora voce pode entrar na sua conta para acompanhar as proximas etapas do cadastro.</p>
         <p style="margin: 24px 0;">
           <a href="${loginUrl}" style="display: inline-block; background: #3ECF8E; color: #0F172A; text-decoration: none; padding: 12px 18px; border-radius: 8px; font-weight: 600;">
@@ -118,13 +118,13 @@ export async function sendInstructorActivatedEmail(params: {
 
   return sendEmail({
     to: params.to,
-    subject: 'Seu cadastro foi ativado no CNH Simples',
-    text: `Ola, ${params.name}. Seu cadastro foi ativado com sucesso no CNH Simples. Acesse o painel: ${dashboardUrl}`,
+    subject: 'Seu cadastro foi ativado no Direção Fácil',
+    text: `Ola, ${params.name}. Seu cadastro foi ativado com sucesso no Direção Fácil. Acesse o painel: ${dashboardUrl}`,
     html: `
       <div style="font-family: Arial, sans-serif; color: #0F172A; line-height: 1.6;">
         <h1 style="margin-bottom: 12px;">Cadastro ativado com sucesso</h1>
         <p>Ola, ${params.name}.</p>
-        <p>Seu cadastro de instrutor esta ativo no <strong>CNH Simples</strong>.</p>
+        <p>Seu cadastro de instrutor esta ativo no <strong>Direção Fácil</strong>.</p>
         <p>Voce ja pode acessar o painel e acompanhar sua operacao na plataforma.</p>
         <p style="margin: 24px 0;">
           <a href="${dashboardUrl}" style="display: inline-block; background: #3ECF8E; color: #0F172A; text-decoration: none; padding: 12px 18px; border-radius: 8px; font-weight: 600;">
@@ -217,7 +217,7 @@ export async function sendInstructorBookingPaidEmail(params: {
     subject: 'Novo pagamento confirmado de agendamento',
     text:
       `Ola, ${params.instructorName}. ` +
-      `O aluno ${params.studentName} concluiu o pagamento de um agendamento no CNH Simples. ` +
+      `O aluno ${params.studentName} concluiu o pagamento de um agendamento no Direção Fácil. ` +
       `Servico: ${params.serviceTitle}. ` +
       `Formato: ${lessonModeLabel}. ` +
       `Horarios: ${slotText}. ` +
@@ -228,7 +228,7 @@ export async function sendInstructorBookingPaidEmail(params: {
       <div style="font-family: Arial, sans-serif; color: #0F172A; line-height: 1.6;">
         <h1 style="margin-bottom: 12px;">Pagamento de agendamento confirmado</h1>
         <p>Ola, ${params.instructorName}.</p>
-        <p>O aluno <strong>${params.studentName}</strong> concluiu o pagamento de um agendamento no <strong>CNH Simples</strong>.</p>
+        <p>O aluno <strong>${params.studentName}</strong> concluiu o pagamento de um agendamento no <strong>Direção Fácil</strong>.</p>
         <ul style="padding-left: 18px;">
           <li><strong>Servico:</strong> ${params.serviceTitle}</li>
           <li><strong>Formato:</strong> ${lessonModeLabel}</li>

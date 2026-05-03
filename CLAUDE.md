@@ -1,4 +1,4 @@
-# CNH Simples — Plataforma de Conexão Instrutor x Aluno
+# Direção Fácil — Plataforma de Conexão Instrutor x Aluno
 
 ## Visão Geral
 

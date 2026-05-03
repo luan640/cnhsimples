@@ -5,7 +5,7 @@ import { AuthShell } from '@/components/auth/AuthShell'
 import { StudentSignupForm } from '@/components/auth/StudentSignupForm'
 
 export const metadata: Metadata = {
-  title: 'Cadastro do Aluno | CNH Simples',
+  title: 'Cadastro do Aluno | Direção Fácil',
   description: 'Crie sua conta de aluno, informe sua localização e defina seu perfil de aprendizado.',
 }
 

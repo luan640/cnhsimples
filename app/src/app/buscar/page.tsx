@@ -16,7 +16,7 @@ import { Navbar } from '@/components/layout/Navbar'
 import { getInstructorSearchItems } from '@/lib/instructors/search'
 
 export const metadata: Metadata = {
-  title: 'Buscar Instrutor | CNH Simples',
+  title: 'Buscar Instrutor | Direção Fácil',
   description: 'Encontre instrutores autônomos credenciados perto de você em Fortaleza e Região Metropolitana.',
 }
 

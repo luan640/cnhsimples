@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   Ban,
   CalendarDays,
@@ -1212,6 +1212,10 @@ export function AgendaView({ profileId, initialSlots, initialAbsences, initialRu
     | { type: 'schedule-rules' }
     | null
   >(null)
+
+  useEffect(() => {
+    if (fromOnboarding) setModal({ type: 'schedule-rules' })
+  }, [fromOnboarding])
 
   const slots = initialSlots
   const absences = initialAbsences

@@ -1,12 +1,12 @@
-# Telas de Login e Cadastro — CNH Simples
-> Diferente do Preply (login unificado), CNH Simples separa o fluxo de aluno e instrutor desde o início.
+# Telas de Login e Cadastro — Direção Fácil
+> Diferente do Preply (login unificado), Direção Fácil separa o fluxo de aluno e instrutor desde o início.
 
 ---
 
 ## Decisão de Design
 
 O Preply usa login unificado (detecta o tipo de conta pelo e-mail).  
-No CNH Simples, **a separação é explícita e visual** porque:
+No Direção Fácil, **a separação é explícita e visual** porque:
 - Aluno: fluxo simples, Google login, sem documentação
 - Instrutor: fluxo complexo, upload de documentos, pagamento de mensalidade
 
@@ -21,7 +21,7 @@ Exibida ao clicar em "Entrar" na navbar ou ao tentar acessar área restrita.
 ```
 ┌─────────────────────────────────────────────┐
 │                                             │
-│          [Logo CNH Simples]                 │
+│          [Logo Direção Fácil]                 │
 │                                             │
 │      Bem-vindo! Como você quer entrar?      │  ← Inter 600, 22px
 │                                             │
@@ -53,7 +53,7 @@ Clicar em um card abre o respectivo modal/página de login.
 
 ```
 ┌─────────────────────────────────┐
-│        [Logo CNH Simples]       │
+│        [Logo Direção Fácil]       │
 │                                 │
 │   Entrar como Aluno             │  ← Inter 700, 22px
 │                                 │
@@ -97,7 +97,7 @@ Clicar em um card abre o respectivo modal/página de login.
 
 ```
 ┌─────────────────────────────────┐
-│        [Logo CNH Simples]       │
+│        [Logo Direção Fácil]       │
 │                                 │
 │   Entrar como Instrutor         │  ← Inter 700, 22px
 │                                 │

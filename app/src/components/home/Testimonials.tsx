@@ -36,7 +36,7 @@ export function Testimonials() {
             O que nossos alunos dizem
           </h2>
           <p className="text-[#64748B]">
-            Histórias reais de quem aprendeu a dirigir com a CNH Simples.
+            Histórias reais de quem aprendeu a dirigir com a Direção Fácil.
           </p>
         </div>
 

@@ -9,7 +9,7 @@ export function Footer() {
           <div className="w-7 h-7 rounded-[6px] flex items-center justify-center" style={{ background: '#3ECF8E' }}>
             <Car size={15} color="#0F172A" />
           </div>
-          <span>CNH Simples</span>
+          <span>Direção Fácil</span>
         </Link>
 
         <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm text-[#64748B]">
@@ -21,7 +21,7 @@ export function Footer() {
         </nav>
 
         <p className="text-sm text-[#64748B]">
-          © {new Date().getFullYear()} CNH Simples · Fortaleza, CE
+          © {new Date().getFullYear()} Direção Fácil · Fortaleza, CE
         </p>
       </div>
     </footer>

@@ -1,4 +1,4 @@
-# CNH Simples — Design System MASTER
+# Direção Fácil — Design System MASTER
 
 > Fonte da verdade para todas as decisões de UI/UX da plataforma.
 > Mobile-first (375px base) com suporte a desktop. Consultar antes de implementar qualquer tela.
@@ -53,7 +53,7 @@ O Supabase usa **slate-dark** para sidebar e **verde esmeralda** como brand. Ext
 --btn-danger-text:       #FFFFFF;
 ```
 
-### Tokens de Conteúdo — Identidade CNH Simples
+### Tokens de Conteúdo — Identidade Direção Fácil
 
 ```css
 /* globals.css / tailwind tokens */

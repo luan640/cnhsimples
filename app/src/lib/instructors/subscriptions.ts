@@ -665,7 +665,7 @@ export async function createInstructorMembershipPayment(
     payment = await paymentClient.create({
       body: {
         transaction_amount: amount,
-        description: `Mensalidade CNH Simples - ${instructor.full_name}`,
+        description: `Mensalidade Direção Fácil - ${instructor.full_name}`,
         payment_method_id: params.cardPaymentMethodId,
         token: params.cardToken,
         installments: params.cardInstallments ?? 1,

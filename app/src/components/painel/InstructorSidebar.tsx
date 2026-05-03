@@ -64,7 +64,7 @@ export function InstructorSidebar() {
           >
             <Car size={15} color="#0F172A" />
           </div>
-          <span className="text-sm">CNH Simples</span>
+          <span className="text-sm">Direção Fácil</span>
         </Link>
       </div>
 
