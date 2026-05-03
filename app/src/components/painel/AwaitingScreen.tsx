@@ -1,25 +1,17 @@
 import Link from 'next/link'
 import { AlertTriangle, ArrowRight, CheckCircle2, Circle, Clock, FileText, Mail } from 'lucide-react'
 
-import { MembershipPaymentButton } from '@/components/painel/MembershipPaymentButton'
-import {
-  getInstructorMembershipAmount,
-  type InstructorSubscription,
-} from '@/lib/instructors/subscription-shared'
 import type { InstructorStatus } from '@/types'
 
 interface Props {
   status: Exclude<InstructorStatus, 'active' | 'inactive' | 'suspended'>
   rejectionReason?: string | null
   instructorName?: string
-  membership?: InstructorSubscription | null
-  membershipFlash?: string | null
 }
 
 const STEPS = [
   { label: 'Cadastro enviado' },
   { label: 'Analise de documentos' },
-  { label: 'Pagamento da mensalidade' },
   { label: 'Perfil ativo na plataforma' },
 ]
 
@@ -34,14 +26,10 @@ export function AwaitingScreen({
   status,
   rejectionReason,
   instructorName = 'Instrutor',
-  membership,
-  membershipFlash,
 }: Props) {
   const activeStep = getActiveStep(status)
   const isRejected = status === 'docs_rejected'
-  const needsPayment = status === 'docs_approved'
   const isPending = status === 'pending'
-  const membershipAmount = getInstructorMembershipAmount()
   const firstName = instructorName.split(' ')[0]
 
   return (
@@ -59,21 +47,15 @@ export function AwaitingScreen({
             style={{
               background: isRejected
                 ? 'linear-gradient(135deg, #FEF2F2 0%, #FFF8F8 100%)'
-                : needsPayment
-                  ? 'linear-gradient(135deg, #ECFDF5 0%, #F0FFF8 100%)'
-                  : 'linear-gradient(135deg, #FFFBEB 0%, #FFFFF8 100%)',
+                : 'linear-gradient(135deg, #FFFBEB 0%, #FFFFF8 100%)',
             }}
           >
             <div
               className="w-20 h-20 rounded-full mx-auto mb-4 flex items-center justify-center"
-              style={{
-                background: isRejected ? '#FEE2E2' : needsPayment ? '#D1FAE5' : '#FEF3C7',
-              }}
+              style={{ background: isRejected ? '#FEE2E2' : '#FEF3C7' }}
             >
               {isRejected ? (
                 <AlertTriangle size={36} style={{ color: '#DC2626' }} />
-              ) : needsPayment ? (
-                <CheckCircle2 size={36} style={{ color: '#3ECF8E' }} />
               ) : (
                 <Clock size={36} style={{ color: '#F59E0B' }} strokeWidth={1.5} />
               )}
@@ -83,19 +65,13 @@ export function AwaitingScreen({
               className="text-xl font-bold mb-1.5"
               style={{ color: isRejected ? '#DC2626' : '#0F172A' }}
             >
-              {isRejected
-                ? 'Atencao necessaria'
-                : needsPayment
-                  ? 'Documentos aprovados'
-                  : `Quase la, ${firstName}!`}
+              {isRejected ? 'Atencao necessaria' : `Quase la, ${firstName}!`}
             </h1>
 
             <p className="text-sm leading-relaxed" style={{ color: '#64748B' }}>
               {isRejected
                 ? 'Um ou mais documentos nao foram aprovados. Veja o motivo abaixo e reenvie.'
-                : needsPayment
-                  ? 'Seu cadastro foi validado. Ative seu perfil pagando a mensalidade.'
-                  : 'Seu cadastro esta sendo analisado pela nossa equipe. Prazo: ate 2 dias uteis.'}
+                : 'Seu cadastro esta sendo analisado pela nossa equipe. Prazo: ate 2 dias uteis.'}
             </p>
           </div>
 
@@ -119,38 +95,6 @@ export function AwaitingScreen({
           )}
 
           <div className="px-8 py-6">
-            {needsPayment && membershipFlash && (
-              <div
-                className="mb-5 rounded-[10px] p-4 text-sm"
-                style={{
-                  background:
-                    membershipFlash === 'success'
-                      ? '#ECFDF5'
-                      : membershipFlash === 'error'
-                        ? '#FEF2F2'
-                        : '#FFFBEB',
-                  border:
-                    membershipFlash === 'success'
-                      ? '1px solid #A7F3D0'
-                      : membershipFlash === 'error'
-                        ? '1px solid #FECACA'
-                        : '1px solid #FDE68A',
-                  color:
-                    membershipFlash === 'success'
-                      ? '#065F46'
-                      : membershipFlash === 'error'
-                        ? '#B91C1C'
-                        : '#92400E',
-                }}
-              >
-                {membershipFlash === 'success'
-                  ? 'Pagamento confirmado. Estamos liberando seu acesso.'
-                  : membershipFlash === 'error'
-                    ? 'Nao foi possivel confirmar o pagamento automaticamente.'
-                    : 'Seu pagamento ainda esta em processamento no Mercado Pago.'}
-              </div>
-            )}
-
             <p className="text-xs font-semibold uppercase tracking-wider mb-4" style={{ color: '#94A3B8' }}>
               Seu progresso
             </p>
@@ -171,14 +115,11 @@ export function AwaitingScreen({
                       ) : current ? (
                         <div
                           className="w-5 h-5 rounded-full border-2 flex items-center justify-center"
-                          style={{ borderColor: needsPayment ? '#3ECF8E' : '#F59E0B' }}
+                          style={{ borderColor: '#F59E0B' }}
                         >
                           <div
                             className="w-2 h-2 rounded-full"
-                            style={{
-                              background: needsPayment ? '#3ECF8E' : '#F59E0B',
-                              animation: !needsPayment ? 'pulse 1.5s infinite' : undefined,
-                            }}
+                            style={{ background: '#F59E0B', animation: 'pulse 1.5s infinite' }}
                           />
                         </div>
                       ) : (
@@ -213,11 +154,6 @@ export function AwaitingScreen({
                           Em andamento - voce recebera um e-mail ao finalizar
                         </p>
                       )}
-                      {current && needsPayment && (
-                        <p className="text-xs mt-0.5" style={{ color: '#059669' }}>
-                          Aguardando seu pagamento
-                        </p>
-                      )}
                     </div>
                   </div>
                 )
@@ -235,21 +171,6 @@ export function AwaitingScreen({
                 <FileText size={16} />
                 Reenviar documentos
               </Link>
-            )}
-
-            {needsPayment && (
-              <div
-                className="rounded-[10px] p-4"
-                style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}
-              >
-                <p className="text-sm font-medium mb-1" style={{ color: '#0F172A' }}>
-                  Mensalidade da plataforma
-                </p>
-                <p className="text-sm mb-4" style={{ color: '#64748B' }}>
-                  Ative seu perfil agora e comece a receber alunos na busca.
-                </p>
-                <MembershipPaymentButton amount={membershipAmount} />
-              </div>
             )}
 
             {isPending && (

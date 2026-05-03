@@ -2,10 +2,8 @@ export const dynamic = 'force-dynamic'
 
 import { redirect } from 'next/navigation'
 
-import { getInstructorProfile } from '@/lib/instructors/dashboard'
+import { getInstructorProfile, resolveInstructorStatus } from '@/lib/instructors/dashboard'
 import { getOnboardingSteps } from '@/lib/instructors/onboarding'
-import { isInstructorSubscriptionActiveForAccess } from '@/lib/instructors/subscription-shared'
-import { getLatestInstructorSubscription } from '@/lib/instructors/subscriptions'
 import { createClient } from '@/lib/supabase/server'
 import { OnboardingWizard } from './OnboardingWizard'
 
@@ -16,10 +14,10 @@ export default async function OnboardingPage() {
   if (!user) redirect('/login')
 
   const profile = await getInstructorProfile(user.id)
-  if (!profile || profile.status !== 'active') redirect('/painel')
+  const metaStatus: string = user.user_metadata?.status ?? 'pending'
+  const status = resolveInstructorStatus(profile?.status, metaStatus)
 
-  const membership = await getLatestInstructorSubscription(profile.id)
-  if (!isInstructorSubscriptionActiveForAccess(membership)) redirect('/painel')
+  if (!profile || (status !== 'active' && status !== 'docs_approved')) redirect('/painel')
 
   const steps = await getOnboardingSteps(profile.id)
   const isDone = steps.find(s => s.id === 'done')?.completed ?? false

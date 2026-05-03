@@ -37,7 +37,7 @@ import type {
   PickupRange,
 } from '@/lib/instructors/detail'
 import { BookingPaymentCheckout } from '@/components/booking/BookingPaymentCheckout'
-import { saveStudentPhone } from '@/app/instrutor/[id]/actions'
+import { saveStudentCep, saveStudentPhone } from '@/app/instrutor/[id]/actions'
 
 type Props = {
   instructor: PublicInstructorDetail
@@ -1232,6 +1232,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
         setManualStudentLon(nextLon)
         setPickupCep(formatCep(result.cep || digits))
         setPickupCepStatus('Localização encontrada. Distância calculada automaticamente.')
+        void saveStudentCep(result.cep || digits, nextLat, nextLon)
       } catch {
         setManualStudentLat(null)
         setManualStudentLon(null)

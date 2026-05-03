@@ -3,6 +3,28 @@
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 
+export async function saveStudentCep(
+  cep: string,
+  latitude: number,
+  longitude: number,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const digits = cep.replace(/\D/g, '')
+  if (digits.length !== 8) return { ok: false, error: 'CEP inválido.' }
+
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: 'Não autenticado.' }
+
+  const admin = createAdminClient()
+  const { error } = await admin
+    .from('student_profiles')
+    .update({ cep: digits, latitude, longitude })
+    .eq('user_id', user.id)
+
+  if (error) return { ok: false, error: error.message }
+  return { ok: true }
+}
+
 export async function saveStudentPhone(phone: string): Promise<{ ok: true } | { ok: false; error: string }> {
   const digits = phone.replace(/\D/g, '')
   if (digits.length < 10) {

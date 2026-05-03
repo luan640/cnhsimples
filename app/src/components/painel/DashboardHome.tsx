@@ -15,9 +15,6 @@ import {
   Wallet,
 } from 'lucide-react'
 import {
-  type InstructorSubscription,
-} from '@/lib/instructors/subscription-shared'
-import {
   Bar,
   BarChart,
   CartesianGrid,
@@ -34,8 +31,6 @@ import type { DashboardStats, InstructorProfile } from '@/lib/instructors/dashbo
 interface Props {
   profile: InstructorProfile
   stats: DashboardStats
-  membership: InstructorSubscription | null
-  membershipFlash?: string | null
 }
 
 type ChartTooltipProps = {

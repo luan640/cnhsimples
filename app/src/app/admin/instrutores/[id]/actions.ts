@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import {
   sendInstructorActivatedEmail,
-  sendInstructorDocsApprovedEmail,
 } from '@/lib/email/notifications'
 
 async function mergeUserMetadata(userId: string, patch: Record<string, unknown>) {
@@ -28,12 +27,12 @@ export async function approveInstructorDocs(instructorId: string, userId: string
 
   const { error } = await admin
     .from('instructor_profiles')
-    .update({ status: 'docs_approved' })
+    .update({ status: 'active', rejection_reason: null })
     .eq('id', instructorId)
 
   if (error) throw new Error(error.message)
 
-  await mergeUserMetadata(userId, { status: 'docs_approved' })
+  await mergeUserMetadata(userId, { status: 'active', rejection_reason: null })
 
   try {
     const { data: authUser } = await admin.auth.admin.getUserById(userId)
@@ -41,13 +40,13 @@ export async function approveInstructorDocs(instructorId: string, userId: string
     const name = authUser.user?.user_metadata?.full_name ?? authUser.user?.email ?? 'instrutor'
 
     if (email) {
-      await sendInstructorDocsApprovedEmail({
+      await sendInstructorActivatedEmail({
         to: email,
         name,
       })
     }
   } catch (error) {
-    console.error('[email] Falha ao enviar aprovacao documental:', error)
+    console.error('[email] Falha ao enviar ativacao do cadastro:', error)
   }
 
   revalidatePath(`/admin/instrutores/${instructorId}`)
