@@ -13,6 +13,8 @@ import {
   ChevronRight,
   Clock3,
   CreditCard,
+  GraduationCap,
+  Heart,
   Layers,
   Loader2,
   MapPin,
@@ -46,6 +48,7 @@ type Props = {
 }
 
 type LessonMode = 'meeting' | 'pickup'
+type LessonPurpose = 'exam' | 'fear'
 type PaymentMethod = 'pix' | 'card'
 type Step = 1 | 2 | 3 | 4
 type CheckoutPhase = 'idle' | 'active' | 'success'
@@ -539,6 +542,8 @@ function StepFormat({
   service,
   lessonMode,
   onMode,
+  lessonPurpose,
+  onPurpose,
   distanceKm,
   isPkg,
   matchedRange,
@@ -555,6 +560,8 @@ function StepFormat({
   service: PublicInstructorServiceOption
   lessonMode: LessonMode
   onMode: (m: LessonMode) => void
+  lessonPurpose: LessonPurpose
+  onPurpose: (p: LessonPurpose) => void
   distanceKm: number | null
   isPkg: boolean
   matchedRange: PickupRange | null
@@ -571,6 +578,56 @@ function StepFormat({
   return (
     <div>
       <SectionHeading step={2} title="Formato da aula" />
+
+      {/* Purpose selector */}
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8]">Objetivo da aula</p>
+      <div className="mb-5 grid grid-cols-2 gap-3">
+        <button
+          type="button"
+          onClick={() => onPurpose('exam')}
+          className="rounded-[12px] border px-4 py-4 text-left transition-all"
+          style={{
+            borderColor: lessonPurpose === 'exam' ? '#3ECF8E' : '#E2E8F0',
+            background: lessonPurpose === 'exam' ? 'rgba(62,207,142,0.08)' : '#FFFFFF',
+            boxShadow: lessonPurpose === 'exam' ? '0 0 0 1px #3ECF8E' : '0 1px 3px rgba(0,0,0,0.06)',
+          }}
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <GraduationCap size={16} style={{ color: lessonPurpose === 'exam' ? '#3ECF8E' : '#94A3B8' }} />
+            <span className="text-sm font-semibold text-[#0F172A]">Exame</span>
+          </div>
+          <p className="text-xs text-[#64748B]">Preparação para o exame de habilitação.</p>
+          {lessonPurpose === 'exam' && (
+            <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-[#3ECF8E]">
+              <Check size={11} /> Selecionado
+            </div>
+          )}
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onPurpose('fear')}
+          className="rounded-[12px] border px-4 py-4 text-left transition-all"
+          style={{
+            borderColor: lessonPurpose === 'fear' ? '#F97316' : '#E2E8F0',
+            background: lessonPurpose === 'fear' ? 'rgba(249,115,22,0.08)' : '#FFFFFF',
+            boxShadow: lessonPurpose === 'fear' ? '0 0 0 1px #F97316' : '0 1px 3px rgba(0,0,0,0.06)',
+          }}
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <Heart size={16} style={{ color: lessonPurpose === 'fear' ? '#F97316' : '#94A3B8' }} />
+            <span className="text-sm font-semibold text-[#0F172A]">Perder o medo</span>
+          </div>
+          <p className="text-xs text-[#64748B]">Ganhar confiança ao volante.</p>
+          {lessonPurpose === 'fear' && (
+            <div className="mt-2 flex items-center gap-1 text-[11px] font-semibold text-[#F97316]">
+              <Check size={11} /> Selecionado
+            </div>
+          )}
+        </button>
+      </div>
+
+      <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#94A3B8]">Local de encontro</p>
 
       {/* Selected service summary */}
       <div
@@ -959,6 +1016,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
   const [step, setStep] = useState<Step>(1)
   const [selectedServiceId, setSelectedServiceId] = useState(instructor.services[0]?.id ?? '')
   const [lessonMode, setLessonMode] = useState<LessonMode>('meeting')
+  const [lessonPurpose, setLessonPurpose] = useState<LessonPurpose>('exam')
   const [selectedDate, setSelectedDate] = useState(instructor.available_slots[0]?.date ?? '')
   const [selectedSlotIds, setSelectedSlotIds] = useState<string[]>([])
   const [availableSlots, setAvailableSlots] = useState<PublicInstructorAvailableSlot[]>(instructor.available_slots)
@@ -1402,6 +1460,8 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
             service={selectedService}
             lessonMode={lessonMode}
             onMode={setLessonMode}
+            lessonPurpose={lessonPurpose}
+            onPurpose={setLessonPurpose}
             distanceKm={distanceKm}
             isPkg={isPkg}
             matchedRange={matchedPickupRange}
@@ -1478,6 +1538,7 @@ export function InstructorBookingView({ instructor, studentLat, studentLon, stud
                 service_id: selectedServiceId,
                 slot_ids: selectedSlotIds,
                 lesson_mode: lessonMode,
+                lesson_purpose: lessonPurpose,
                 total_amount: totalAmount,
               }}
               onSuccess={handleCheckoutSuccess}

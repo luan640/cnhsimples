@@ -17,6 +17,7 @@ export type CreateBookingPaymentParams = {
   serviceId: string
   slotIds: string[]
   lessonMode: 'meeting' | 'pickup'
+  lessonPurpose?: 'exam' | 'fear'
   totalAmount: number
   paymentMethod: 'pix' | 'card'
   cardToken?: string
@@ -271,6 +272,7 @@ export async function createBookingGroupPayment(
       service_id: params.serviceId,
       slot_ids: uniqueSlotIds,
       lesson_mode: params.lessonMode,
+      lesson_purpose: params.lessonPurpose ?? 'exam',
       payment_method: params.paymentMethod,
       total_lessons: uniqueSlotIds.length,
       total_amount: normalizedTotalAmount,
@@ -613,7 +615,7 @@ export async function confirmBookingGroupPayment(
   const { data: bookingGroup, error: bgError } = await admin
     .from('booking_groups')
     .select(
-      'id, status, student_id, instructor_id, service_id, lesson_mode, total_amount, platform_amount, instructor_amount, slot_ids'
+      'id, status, student_id, instructor_id, service_id, lesson_mode, lesson_purpose, total_amount, platform_amount, instructor_amount, slot_ids'
     )
     .eq('id', bookingGroupId)
     .single()
@@ -665,6 +667,7 @@ export async function confirmBookingGroupPayment(
     booking_group_id: bookingGroupId,
     service_id: bookingGroup.service_id,
     lesson_mode: bookingGroup.lesson_mode,
+    lesson_purpose: (bookingGroup as any).lesson_purpose ?? 'exam',
     value: perSlotValue,
     platform_amount: perSlotPlatform,
     instructor_amount: perSlotInstructor,

@@ -108,6 +108,10 @@ export async function POST(request: NextRequest) {
     body.lesson_mode === 'meeting' || body.lesson_mode === 'pickup'
       ? body.lesson_mode
       : 'meeting'
+  const lessonPurpose =
+    body.lesson_purpose === 'exam' || body.lesson_purpose === 'fear'
+      ? body.lesson_purpose
+      : 'exam'
   const parsedTotalAmount = typeof body.total_amount === 'number' ? body.total_amount : Number(body.total_amount)
   const totalAmount =
     Number.isFinite(parsedTotalAmount) && parsedTotalAmount > 0
@@ -156,6 +160,7 @@ export async function POST(request: NextRequest) {
       serviceId,
       slotIds,
       lessonMode,
+      lessonPurpose,
       totalAmount,
       paymentMethod,
       // Card fields

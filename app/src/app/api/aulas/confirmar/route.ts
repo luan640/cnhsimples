@@ -38,9 +38,6 @@ export async function POST(request: NextRequest) {
   if (!bookingId || typeof bookingId !== 'string') {
     return NextResponse.json({ error: 'Booking inválido.' }, { status: 400 })
   }
-  if (!file || file.size === 0) {
-    return NextResponse.json({ error: 'Comprovante é obrigatório.' }, { status: 400 })
-  }
 
   const admin = createAdminClient()
 
@@ -54,6 +51,7 @@ export async function POST(request: NextRequest) {
       instructor_amount,
       platform_amount,
       status,
+      lesson_purpose,
       availability_slots ( date, hour, minute ),
       instructor_profiles!inner ( user_id, full_name ),
       student_profiles ( full_name )
@@ -96,22 +94,33 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  // Upload file to Supabase Storage
-  const arrayBuffer = await file.arrayBuffer()
-  const buffer = Buffer.from(arrayBuffer)
-  const ext = (file.name.split('.').pop() ?? 'pdf').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10)
-  const storagePath = `${booking.instructor_id}/${bookingId}/comprovante-${Date.now()}.${ext}`
+  const lessonPurpose = (booking as any).lesson_purpose ?? 'exam'
+  const requiresReceipt = lessonPurpose !== 'fear'
 
-  const { error: uploadError } = await admin.storage
-    .from('lesson-receipts')
-    .upload(storagePath, buffer, { contentType: file.type, upsert: true })
-
-  if (uploadError) {
-    return NextResponse.json({ error: `Falha ao enviar arquivo: ${uploadError.message}` }, { status: 500 })
+  if (requiresReceipt && (!file || file.size === 0)) {
+    return NextResponse.json({ error: 'Comprovante é obrigatório para aulas de exame.' }, { status: 400 })
   }
 
-  const { data: urlData } = admin.storage.from('lesson-receipts').getPublicUrl(storagePath)
-  const receiptUrl = urlData.publicUrl
+  let receiptUrl: string | null = null
+
+  if (file && file.size > 0) {
+    // Upload file to Supabase Storage
+    const arrayBuffer = await file.arrayBuffer()
+    const buffer = Buffer.from(arrayBuffer)
+    const ext = (file.name.split('.').pop() ?? 'pdf').replace(/[^a-zA-Z0-9]/g, '').slice(0, 10)
+    const storagePath = `${booking.instructor_id}/${bookingId}/comprovante-${Date.now()}.${ext}`
+
+    const { error: uploadError } = await admin.storage
+      .from('lesson-receipts')
+      .upload(storagePath, buffer, { contentType: file.type, upsert: true })
+
+    if (uploadError) {
+      return NextResponse.json({ error: `Falha ao enviar arquivo: ${uploadError.message}` }, { status: 500 })
+    }
+
+    const { data: urlData } = admin.storage.from('lesson-receipts').getPublicUrl(storagePath)
+    receiptUrl = urlData.publicUrl
+  }
 
   // Save receipt_url and confirmed_at
   const { error: updateError } = await admin

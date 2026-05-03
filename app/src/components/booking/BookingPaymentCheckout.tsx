@@ -19,6 +19,7 @@ export type BookingPayload = {
   slot_ids: string[]
   lesson_mode: 'meeting' | 'pickup'
   total_amount: number
+  lesson_purpose: 'exam' | 'fear'
 }
 
 type PaymentResult = {
@@ -50,6 +51,7 @@ function getPixRequestKey(payload: BookingPayload) {
     instructor_id: payload.instructor_id,
     service_id: payload.service_id,
     lesson_mode: payload.lesson_mode,
+    lesson_purpose: payload.lesson_purpose,
     total_amount: payload.total_amount,
     slot_ids: [...payload.slot_ids].sort(),
   })

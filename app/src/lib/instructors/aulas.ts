@@ -15,6 +15,7 @@ export type InstructorLesson = {
   instructor_amount: number
   platform_amount: number
   lesson_mode: 'meeting' | 'pickup' | null
+  lesson_purpose: 'exam' | 'fear' | null
   receipt_url: string | null
   confirmed_at: string | null
   created_at: string | null
@@ -36,6 +37,7 @@ export async function getInstructorLessons(instructorId: string): Promise<Instru
       instructor_amount,
       platform_amount,
       lesson_mode,
+      lesson_purpose,
       receipt_url,
       confirmed_at,
       created_at,
@@ -71,6 +73,7 @@ export async function getInstructorLessons(instructorId: string): Promise<Instru
       instructor_amount: Number(row.instructor_amount ?? 0),
       platform_amount: Number(row.platform_amount ?? 0),
       lesson_mode: (row.lesson_mode as InstructorLesson['lesson_mode']) ?? null,
+      lesson_purpose: (row.lesson_purpose as InstructorLesson['lesson_purpose']) ?? null,
       receipt_url: row.receipt_url ?? null,
       confirmed_at: row.confirmed_at ?? null,
       created_at: row.created_at ?? null,

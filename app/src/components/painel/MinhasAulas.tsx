@@ -8,6 +8,8 @@ import {
   Clock,
   ExternalLink,
   FileCheck2,
+  GraduationCap,
+  Heart,
   Loader2,
   MessageCircle,
   Paperclip,
@@ -242,6 +244,139 @@ function ConfirmModal({
   )
 }
 
+// ─── Simple Confirm Modal (fear lessons — no receipt required) ────────────────
+
+function SimpleConfirmModal({
+  lesson,
+  onClose,
+  onConfirmed,
+}: {
+  lesson: InstructorLesson
+  onClose: () => void
+  onConfirmed: (bookingId: string, receiptUrl: string) => void
+}) {
+  const [error, setError] = useState<string | null>(null)
+  const [isPending, setIsPending] = useState(false)
+
+  async function handleConfirm() {
+    setIsPending(true)
+    setError(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('bookingId', lesson.id)
+
+      const res = await fetch('/api/aulas/confirmar', { method: 'POST', body: formData })
+      const json = await res.json()
+
+      if (!res.ok || !json.ok) {
+        setError(json.error ?? 'Erro ao confirmar aula.')
+        return
+      }
+
+      onConfirmed(lesson.id, json.receiptUrl ?? '')
+    } catch {
+      setError('Erro de conexão. Tente novamente.')
+    } finally {
+      setIsPending(false)
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center sm:items-center"
+      style={{ background: 'rgba(0,0,0,0.5)' }}
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm rounded-t-[20px] bg-white p-5 sm:rounded-[16px]"
+        style={{ boxShadow: '0 -4px 32px rgba(0,0,0,0.15)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div
+              className="flex h-8 w-8 items-center justify-center rounded-[8px]"
+              style={{ background: 'rgba(62,207,142,0.12)' }}
+            >
+              <BookCheck size={16} style={{ color: '#3ECF8E' }} />
+            </div>
+            <h2 className="text-base font-bold" style={{ color: '#0F172A' }}>
+              Finalizar aula
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 items-center justify-center rounded-full transition-colors hover:bg-[#F1F5F9]"
+            aria-label="Fechar"
+          >
+            <X size={16} style={{ color: '#64748B' }} />
+          </button>
+        </div>
+
+        {/* Lesson info */}
+        <div
+          className="mb-4 rounded-[10px] px-3 py-3"
+          style={{ background: '#F8FAFC', border: '1px solid #E2E8F0' }}
+        >
+          <p className="text-sm font-semibold" style={{ color: '#0F172A' }}>
+            {lesson.student_name}
+          </p>
+          <p className="mt-0.5 text-xs" style={{ color: '#64748B' }}>
+            {formatDate(lesson.slot_date)} · {formatTime(lesson.slot_hour, lesson.slot_minute)}
+            {lesson.lesson_mode === 'pickup' ? ' · Busca em casa' : ''}
+          </p>
+        </div>
+
+        <p className="mb-4 text-sm" style={{ color: '#64748B' }}>
+          Tem certeza que deseja finalizar essa aula? Essa ação não pode ser desfeita.
+        </p>
+
+        {error && (
+          <div
+            className="mb-3 rounded-[8px] px-3 py-2 text-xs font-medium"
+            style={{ background: '#FEE2E2', color: '#991B1B' }}
+          >
+            {error}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isPending}
+            className="flex-1 rounded-full py-2.5 text-sm font-semibold transition-colors disabled:opacity-50"
+            style={{ background: '#F1F5F9', color: '#64748B' }}
+          >
+            Cancelar
+          </button>
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={isPending}
+            className="flex flex-1 items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold transition-colors disabled:opacity-50"
+            style={{ background: '#3ECF8E', color: '#0F172A' }}
+          >
+            {isPending ? (
+              <>
+                <Loader2 size={14} className="animate-spin" />
+                Finalizando…
+              </>
+            ) : (
+              <>
+                <CheckCircle2 size={14} />
+                Confirmar
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Lesson chip ──────────────────────────────────────────────────────────────
 
 function LessonChip({
@@ -306,9 +441,29 @@ function LessonChip({
 
       {/* Footer row */}
       <div className="mt-2.5 flex items-center justify-between border-t border-[#F1F5F9] pt-2.5">
-        <span className="text-xs font-medium" style={{ color: '#64748B' }}>
-          Sua parte: <span className="font-bold" style={{ color: '#0F172A' }}>{formatCurrency(lesson.instructor_amount)}</span>
-        </span>
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-xs font-medium" style={{ color: '#64748B' }}>
+            Sua parte: <span className="font-bold" style={{ color: '#0F172A' }}>{formatCurrency(lesson.instructor_amount)}</span>
+          </span>
+          {lesson.lesson_purpose === 'fear' && (
+            <span
+              className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              style={{ background: 'rgba(249,115,22,0.10)', color: '#C2410C' }}
+            >
+              <Heart size={9} />
+              Confiança
+            </span>
+          )}
+          {(lesson.lesson_purpose === 'exam' || lesson.lesson_purpose === null) && (
+            <span
+              className="inline-flex shrink-0 items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold"
+              style={{ background: 'rgba(62,207,142,0.10)', color: '#065F46' }}
+            >
+              <GraduationCap size={9} />
+              Exame
+            </span>
+          )}
+        </div>
 
         {lesson.status === 'confirmed' && (() => {
           const nowFortaleza = new Date(
@@ -388,6 +543,7 @@ export function MinhasAulas({ lessons: initial }: { lessons: InstructorLesson[] 
   const [tab, setTab] = useState<Tab>('proximas')
   const [lessons, setLessons] = useState(initial)
   const [confirmingLesson, setConfirmingLesson] = useState<InstructorLesson | null>(null)
+  const [confirmingSimpleLesson, setConfirmingSimpleLesson] = useState<InstructorLesson | null>(null)
 
   const today = new Date().toISOString().slice(0, 10)
 
@@ -404,11 +560,20 @@ export function MinhasAulas({ lessons: initial }: { lessons: InstructorLesson[] 
     setLessons((prev) =>
       prev.map((l) =>
         l.id === bookingId
-          ? { ...l, status: 'completed' as const, receipt_url: receiptUrl }
+          ? { ...l, status: 'completed' as const, receipt_url: receiptUrl || null }
           : l
       )
     )
     setConfirmingLesson(null)
+    setConfirmingSimpleLesson(null)
+  }
+
+  function handleConfirmClick(lesson: InstructorLesson) {
+    if (lesson.lesson_purpose === 'fear') {
+      setConfirmingSimpleLesson(lesson)
+    } else {
+      setConfirmingLesson(lesson)
+    }
   }
 
   return (
@@ -417,6 +582,13 @@ export function MinhasAulas({ lessons: initial }: { lessons: InstructorLesson[] 
         <ConfirmModal
           lesson={confirmingLesson}
           onClose={() => setConfirmingLesson(null)}
+          onConfirmed={handleConfirmed}
+        />
+      )}
+      {confirmingSimpleLesson && (
+        <SimpleConfirmModal
+          lesson={confirmingSimpleLesson}
+          onClose={() => setConfirmingSimpleLesson(null)}
           onConfirmed={handleConfirmed}
         />
       )}
@@ -494,7 +666,7 @@ export function MinhasAulas({ lessons: initial }: { lessons: InstructorLesson[] 
               <LessonChip
                 key={lesson.id}
                 lesson={lesson}
-                onConfirm={() => setConfirmingLesson(lesson)}
+                onConfirm={() => handleConfirmClick(lesson)}
               />
             ))
           : <EmptyState tab={tab} />}
