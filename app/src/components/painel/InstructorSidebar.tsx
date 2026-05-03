@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import {
-  LayoutDashboard, CalendarDays, GraduationCap, Wallet, User, Car, LogOut, BadgeDollarSign, BookOpen,
+  LayoutDashboard, CalendarDays, GraduationCap, Wallet, User, Car, LogOut, BookOpen,
 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 
@@ -13,7 +13,6 @@ const NAV_ITEMS = [
   { href: '/agenda', icon: CalendarDays, label: 'Agenda' },
   { href: '/painel/aulas', icon: GraduationCap, label: 'Minhas Aulas' },
   { href: '/servicos', icon: BookOpen, label: 'Serviços' },
-  { href: '/painel/planos', icon: BadgeDollarSign, label: 'Plano' },
   { href: '/carteira', icon: Wallet, label: 'Carteira' },
   { href: '/perfil/instrutor', icon: User, label: 'Meu Perfil' },
 ]
@@ -122,7 +121,7 @@ export function InstructorSidebar() {
             </p>
             {status && (
               <p className="text-[11px]" style={{ color: status === 'active' ? '#3ECF8E' : '#F59E0B' }}>
-                {status === 'active' ? 'Ativo' : status === 'docs_approved' ? 'Aguardando pagamento' : 'Em análise'}
+                {status === 'active' ? 'Ativo' : 'Em análise'}
               </p>
             )}
           </div>
